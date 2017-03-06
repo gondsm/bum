@@ -1,11 +1,18 @@
 #!/usr/bin/python3
 """ This script implements the testbench used for producing the results for 
 the paper.
+
+T vector = [L (chosen label), E (evidence), h (entropy)]
 """
 import probt
 import numpy as np
 import pprint
-    
+
+# This dictionary will maintain the characteristics of the users.
+# It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
+# as such maintains the latest label for each combination of evidence
+# and identity. Uninitialized characteristics are kept as -1
+user_characteristics = []
 
 class characteristic_model:
     def __init__(self, input_classes=[10,10], output_classes=10):
@@ -41,7 +48,7 @@ class characteristic_model:
         self._class_sequence = []
         self._prob_sequence = []
 
-    def instantiate(self, in_val):
+    def instantiate(self, evidence, identity):
         """ Instantiates the model, yielding a result class. """
         # Define joint distribution
         joint = probt.plJointDistribution(self._input_variables ^ self._C_1, self._P_C_1*self._P_E_given_C_1)
@@ -51,8 +58,8 @@ class characteristic_model:
         
         # Define evidence
         evidence = probt.plValues(self._input_variables)
-        for i in range(len(in_val)):
-            evidence[self._input_variables[i]] = in_val[i]
+        for i in range(len(evidence)):
+            evidence[self._input_variables[i]] = evidence[i]
         
         # Instantiate/Compile into resulting distribution
         result = P_C_1_given_E.instantiate(evidence)
@@ -60,17 +67,21 @@ class characteristic_model:
         result_prob = result.tabulate()[1][result_class-1]
 
         # Append to report
-        self._in_sequence.append(in_val)
+        self._in_sequence.append(evidence)
         self._class_sequence.append(result_class)
         self._prob_sequence.append(result_prob)
 
         return result_class
 
-    def fuse(self, in_val, result_class):
-        """ Updates the likelihood with a new example. """
+    def fuse(self, evidence, label, h, identity):
+        """ Updates the likelihood with a new example. 
+        evidence: evidence vector
+        label: class for which we're fusing
+        h: entropy
+        """
         # Initialize plValues
         values = probt.plValues(self._C_1)
-        values[self._C_1] = result_class
+        values[self._C_1] = label
 
         # Instantiate P(E|C_1=result)
         instantiation = self._P_E_given_C_1.instantiate(values).tabulate()
@@ -85,17 +96,15 @@ class characteristic_model:
             # If the values correspond to the input values (looks REALLY arcane to be extensible)
             # basically, the set will be {True} if all variables in elem are equal to the inputs,
             # which is the case we want to reinforce.
-            if set([True if elem[j] == in_val[j] else False for j in range(elem.size())]) == {True}:
+            if set([True if elem[j] == evidence[j] else False for j in range(elem.size())]) == {True}:
                 dist[i] = 2*dist[i]
         
         # Push into the distribution
         self._P_E_given_C_1.push(values, dist)
 
-    def define_likelihood(self, out_class, likelihood):
-        """ Replaces the likelihood """
-        values = probt.plValues(self._C_1)
-        values[self._C_1] = out_class
-        self._P_E_given_C_1.push(probt.plUniform(self._input_variables), values)
+    def plot(label, evidence, identity):
+        """ Plots the likelihood for the given evidence vector, identity label. """
+        pass
 
     def report(self):
         """ Print history of (input, output, probability) tuples. """
@@ -104,6 +113,23 @@ class characteristic_model:
         pprint.pprint(list(zipped))
         return self._class_sequence
 
+class user_simulator:
+    """ A class for simulating a user. """
+    pass
+
+def generate_label(p_c, evidence, hard_label=-1):
+    """ This function receives the P(C) distribution and the current
+    evidence, and optionally a hard label.
+    If the classification and hard label do not match up, the 
+    generator has the chance to tech the system by incorporating the hard
+    evidence into the T vector.
+
+    This function also updates the global registry of users, for clustering purposes.
+
+    returns T: as defined before
+    hard_label: "correct" label received from elsewhere
+    """
+    pass
 
 if __name__=="__main__":
     c1 = characteristic_model([10,10, 10], 10)
