@@ -21,8 +21,9 @@ import probt
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
 # as such maintains the latest label for each combination of evidence
-# and identity. Uninitialized characteristics are kept as -1
-user_characteristics = []
+# and identity. No initialization will be done; uninitialized values
+# will raise a KeyError.
+user_characteristics = dict()
 
 class characteristic_model:
     """ This class contains a full model of a single characteristic.
@@ -171,10 +172,15 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
     identity: the user's identity
     hard_label: "correct" label received from elsewhere
     """
+    # Define T vector
     if hard_label == -1:
         T = [soft_label, evidence, identity, entropy]
     else:
         T = [hard_label, evidence, identity, 0.1]
+
+    # Update user representation
+    user_characteristics[tuple(T[1] + [T[2]])]= T[0]
+
     return T
 
 
@@ -198,3 +204,6 @@ if __name__=="__main__":
 
     # Report
     c1.report()
+
+    # Show user characteristics
+    pprint.pprint(user_characteristics)
