@@ -49,4 +49,7 @@ def plot_users(users):
 
 
 if __name__ == "__main__":
+    mpl.rcParams['ps.useafm'] = True
+    mpl.rcParams['pdf.use14corefonts'] = True
+    mpl.rcParams['pdf.fonttype'] = 42
     plot_users([[3, 5, 6], [2, 5, 9], [1, 5, 7]])
