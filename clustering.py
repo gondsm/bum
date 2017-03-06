@@ -57,9 +57,9 @@ def plot_clusters(means, covariances):
         ax.set_zlabel("C_3")
 
     # Create figure
-    fig = plt.figure(figsize=plt.figaspect(1))  # Square figure
+    fig = plt.figure()  # Square figure
     ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(elev=15., azim=45)
+    ax.view_init(elev=15., azim=-45)
 
 
     # Plot clusters
@@ -72,13 +72,18 @@ def plot_clusters(means, covariances):
         # Plot
         plot_ellipsoid(v, mean, ax)
 
-    # Set plot limits
+    # Set plot limits and labels
     ax.set_xlim([0, 10])
     ax.set_ylim([0, 10])
     ax.set_zlim([0, 10])
+    ax.set_xlabel("C_1")
+    ax.set_ylabel("C_2")
+    ax.set_zlabel("C_3")
+
 
     # Show plot
-    plt.show()
+    #plt.show()
+    plt.savefig("cluster_example.pdf")
 
 
 def original():
@@ -150,5 +155,8 @@ def test():
     plot_clusters(gmm.means_, gmm.covariances_)
 
 if __name__=="__main__":
+    mpl.rcParams['ps.useafm'] = True
+    mpl.rcParams['pdf.use14corefonts'] = True
+    mpl.rcParams['pdf.fonttype'] = 42
     #original()
     test()
