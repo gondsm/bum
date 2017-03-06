@@ -4,9 +4,19 @@ the paper.
 
 T vector = [L (chosen label), E (evidence), h (entropy)]
 """
-import probt
+
+# Futures
+# This was tested on Python3, but might also work on 2.7.
+# The following is DEFINITELY needed:
+from __future__ import division
+from __future__ import print_function
+
+# Standard imports
 import numpy as np
 import pprint
+
+# Custom imports
+import probt
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -113,7 +123,7 @@ class characteristic_model:
             # basically, the set will be {True} if all variables in elem are equal to the inputs,
             # which is the case we want to reinforce.
             if set([True if elem[j] == in_vals[j] else False for j in range(elem.size())]) == {True}:
-                dist[i] = 2*dist[i]
+                dist[i] = (1+1/h)*dist[i]
         
         # Push into the distribution
         self._P_E_given_C_1.push(values, dist)
