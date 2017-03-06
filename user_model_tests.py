@@ -18,6 +18,19 @@ import pprint
 # Custom imports
 import probt
 
+
+# Constants
+# These are global constant variables that guide the instantiation of the
+# various objects.
+# How many users we'll simulate:
+NUMBER_OF_USERS = 10
+# How many different values are in each evidence variable:
+# (implicitly defines the name and number of evidence variables)
+EVIDENCE_STRUCTURE = [10, 10, 10] 
+# How many different values are in the output variables:
+# (implicitly defined the name and number of output variables)
+CHARACTERISTICS_STRUCTURE = [10]
+
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
 # as such maintains the latest label for each combination of evidence
@@ -135,9 +148,15 @@ class characteristic_model:
         self._P_E_given_C_1.push(values, dist)
 
 
-    def plot(label, evidence, identity):
+    def plot(self, label, evidence, identity):
         """ Plots the likelihood for the given evidence vector, identity label. """
-        pass
+        # Initialize plValues
+        values = probt.plValues(self._C_1)
+        values[self._C_1] = label
+
+        # Instantiate P(E|C_1=result)
+        instantiation = self._P_E_given_C_1.instantiate(values)
+        print(instantiation)
 
     
     def report(self):
@@ -147,9 +166,12 @@ class characteristic_model:
         pprint.pprint(list(zipped))
 
 
-class user_simulator:
-    """ A class for simulating a user. """
-    pass
+class population_simulator:
+    """ A class for simulating a user population. """
+    self._users = []
+
+    def __init__(self, number_of_users = 10, evidence_structure = [10,10,10]):
+        """ Initialize a pool of number_of_users users."""
 
 
 def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
@@ -186,7 +208,7 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
 
 if __name__=="__main__":
     # Define models
-    c1 = characteristic_model([10,10, 10], 10)
+    c1 = characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[0], NUMBER_OF_USERS)
     
     # Define evidence (TODO: use simulator)
     evidence = [1,2,3]
