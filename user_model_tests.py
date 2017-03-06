@@ -14,6 +14,7 @@ from __future__ import print_function
 # Standard imports
 import numpy as np
 import pprint
+import itertools
 
 # Custom imports
 import probt
@@ -38,6 +39,7 @@ CHARACTERISTICS_STRUCTURE = [10]
 # will raise a KeyError.
 user_characteristics = dict()
 
+
 class characteristic_model:
     """ This class contains a full model of a single characteristic.
     It is able to instantiate and fuse information, as well as to plot
@@ -60,7 +62,6 @@ class characteristic_model:
         input_variables = [probt.plVariable("E_{}".format(i), probt.plIntegerType(1, input_classes[i])) for i in range(len(input_classes))]
         input_variables.append(self._I)
         self._input_variables = probt.plVariablesConjunction(input_variables)
-        print(self._input_variables)
 
         # Define/fill in likelihood
         self._P_E_given_C_1 = probt.plDistributionTable(self._input_variables, self._C_1)
@@ -168,13 +169,57 @@ class characteristic_model:
 
 class population_simulator:
     """ A class for simulating a user population. """
-    self._users = []
 
-    def __init__(self, number_of_users = 10, evidence_structure = [10,10,10]):
-        """ Initialize a pool of number_of_users users."""
+    def __init__(self, number_of_users=10, evidence_structure=[10,10,10], characteristics_structure=[10]):
+        """ Initialize a pool of number_of_users users.
+        It receives characteristics and evidence structures. These are lists that
+        maintain the number of states of each variable and, implicitly, how 
+        many of each there are.
+        """
+        # This *dictionary* will maintain the characteristics of the users.
+        # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
+        # as such maintains the label for each combination of evidence
+        # and identity. It is similar to the structure used for keeping the
+        # results. This is by design; they can then be compared.
+        self._users = dict()
+        
+        # Copy input to members:
+        self._number_of_users = number_of_users
+        self._evidence_structure = evidence_structure
+        self._characteristics_structure = characteristics_structure
+
+        # Build the ranges for all evidence and create an iterator
+        a = [range(1, elem+1) for elem in evidence_structure]
+
+        # Initialize characteristics for all evidence combination
+        for i in range(number_of_users):
+            iterator = itertools.product(*a)
+            for comb in iterator:
+                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in characteristics_structure]
 
 
-def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
+    def generate(self, user=-1):
+        """ Generates a combination of evidence and labels, according to
+        the profiles loaded in self._users.
+        """
+        # Generate evidence
+        evidence = [np.random.randint(1, elem+1) for elem in self._evidence_structure]
+        evidence.append(np.random.randint(1, self._number_of_users+1))
+
+        # Retrieve characteristics
+        characteristics = self._users[tuple(evidence)]
+
+        return evidence, characteristics
+
+
+    def get_users():
+        """ Returns the whole users dictionary, which can then be used by
+        other pieces of code for evaluation.
+        """
+        return self._users
+
+
+def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
     """ This function receives the soft_label and entropy and the current
     evidence, and optionally a hard label.
     If the classification and hard label do not match up, the 
@@ -194,38 +239,45 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
     identity: the user's identity
     hard_label: "correct" label received from elsewhere
     """
-    # Define T vector
-    if hard_label == -1:
-        T = [soft_label, evidence, identity, entropy]
-    else:
-        T = [hard_label, evidence, identity, 0.1]
+
+    # Define T with soft label
+    T = [soft_label, evidence, identity, entropy]
+
+    try:
+        # If the value was initialized:
+        user_characteristics[tuple(T[1] + [T[2]])]
+    except KeyError:
+        # Define T vector with hard evidence, if possible
+        if hard_label is not None:
+            T = [hard_label, evidence, identity, 0.1]
 
     # Update user representation
     user_characteristics[tuple(T[1] + [T[2]])]= T[0]
 
+    # Return the vector for fusion
     return T
 
 
 if __name__=="__main__":
+    # Initialize population simulator
+    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
+
     # Define models
     c1 = characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[0], NUMBER_OF_USERS)
-    
-    # Define evidence (TODO: use simulator)
-    evidence = [1,2,3]
-    identity = 1
 
-    # Teach first example
-    T = generate_label(0, 0, evidence, identity, hard_label=5)
-    c1.fuse(T)
+    
 
     # Run
     for i in range(10):
+        evidence, characteristics = population.generate()
+        identity = evidence.pop()
+        
         result_class, entropy = c1.instantiate(evidence, identity)
-        T = generate_label(result_class, entropy, evidence, identity)
+        T = generate_label(result_class, entropy, evidence, identity, characteristics[0])
         c1.fuse(T)
 
     # Report
     c1.report()
 
-    # Show user characteristics
+    # Show learned user characteristics
     pprint.pprint(user_characteristics)
