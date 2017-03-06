@@ -84,6 +84,7 @@ class characteristic_model:
         result = P_C_1_given_E.instantiate(evidence_vals)
         result_class = result.n_best(1)[0].to_int()
         result_prob = result.tabulate()[1][result_class-1]
+        entropy = result.compute_shannon_entropy()
 
         # Append to report
         self._in_sequence.append(evidence)
@@ -92,15 +93,19 @@ class characteristic_model:
         self._identity_sequence.append(identity)
 
         # Return result
-        return result_class
+        return [result_class, entropy]
 
 
-    def fuse(self, label, evidence, identity, h):
+    def fuse(self, T):    
         """ Updates the likelihood with a new example. 
-        evidence: evidence vector
-        label: class for which we're fusing
-        h: entropy
+        The T vector is received as defined above.
         """
+        # Break up the T vector:
+        label = T[0]
+        evidence = T[1]
+        identity = T[2]
+        h = T[3]
+
         # Initialize plValues
         values = probt.plValues(self._C_1)
         values[self._C_1] = label
@@ -140,12 +145,14 @@ class characteristic_model:
         print("(evidence, identity, output, probability)")
         pprint.pprint(list(zipped))
 
+
 class user_simulator:
     """ A class for simulating a user. """
     pass
 
-def generate_label(p_c, evidence, hard_label=-1):
-    """ This function receives the P(C) distribution and the current
+
+def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
+    """ This function receives the soft_label and entropy and the current
     evidence, and optionally a hard label.
     If the classification and hard label do not match up, the 
     generator has the chance to tech the system by incorporating the hard
@@ -153,16 +160,30 @@ def generate_label(p_c, evidence, hard_label=-1):
 
     This function also updates the global registry of users, for clustering purposes.
 
+    It may seem like a really simple function, but in the case where the system
+    is distributed, this function generates the main piece of data that is
+    transmitted between the local and remote parts of the system.
+
     returns T: as defined before
+    soft_label: classification result
+    entropy: entropy of the result distribution
+    evidence: the evidence vector
+    identity: the user's identity
     hard_label: "correct" label received from elsewhere
     """
-    pass
+    T = [soft_label, evidence, identity, 1.0]
+    return T
+
 
 if __name__=="__main__":
     c1 = characteristic_model([10,10, 10], 10)
     
+    evidence = [1,2,3]
+    identity = 1
+
     for i in range(10):
-        result_class = c1.instantiate([1, 2, 3], 1)
-        c1.fuse(result_class, [1, 2, 3], 1, 1.0)
+        result_class, entropy = c1.instantiate(evidence, identity)
+        T = generate_label(result_class, entropy, evidence, identity)
+        c1.fuse(T)
 
     c1.report()
