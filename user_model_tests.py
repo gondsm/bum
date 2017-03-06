@@ -95,6 +95,10 @@ class characteristic_model:
         values = probt.plValues(self._C_1)
         values[self._C_1] = label
 
+        # Initialize temporary input variable (so we can compare everything as
+        # vectors and not worry too much)
+        in_vals = evidence + [identity]
+
         # Instantiate P(E|C_1=result)
         instantiation = self._P_E_given_C_1.instantiate(values).tabulate()
         values_vector = instantiation[0]
@@ -108,7 +112,7 @@ class characteristic_model:
             # If the values correspond to the input values (looks REALLY arcane to be extensible)
             # basically, the set will be {True} if all variables in elem are equal to the inputs,
             # which is the case we want to reinforce.
-            if set([True if elem[j] == evidence[j] else False for j in range(elem.size())]) == {True}:
+            if set([True if elem[j] == in_vals[j] else False for j in range(elem.size())]) == {True}:
                 dist[i] = 2*dist[i]
         
         # Push into the distribution
@@ -149,6 +153,6 @@ if __name__=="__main__":
     
     for i in range(10):
         result_class = c1.instantiate([1, 2, 3], 1)
-        #c1.fuse(result_class, [1, 2, 3], 1, 1.0)
+        c1.fuse(result_class, [1, 2, 3], 1, 1.0)
 
     c1.report()
