@@ -171,19 +171,30 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=-1):
     identity: the user's identity
     hard_label: "correct" label received from elsewhere
     """
-    T = [soft_label, evidence, identity, 1.0]
+    if hard_label == -1:
+        T = [soft_label, evidence, identity, entropy]
+    else:
+        T = [hard_label, evidence, identity, 0.1]
     return T
 
 
 if __name__=="__main__":
+    # Define models
     c1 = characteristic_model([10,10, 10], 10)
     
+    # Define evidence (TODO: use simulator)
     evidence = [1,2,3]
     identity = 1
 
+    # Teach first example
+    T = generate_label(0, 0, evidence, identity, hard_label=5)
+    c1.fuse(T)
+
+    # Run
     for i in range(10):
         result_class, entropy = c1.instantiate(evidence, identity)
         T = generate_label(result_class, entropy, evidence, identity)
         c1.fuse(T)
 
+    # Report
     c1.report()
