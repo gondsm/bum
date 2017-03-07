@@ -15,6 +15,8 @@ from __future__ import print_function
 import numpy as np
 import pprint
 import itertools
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 # Custom imports
 import probt
@@ -31,6 +33,8 @@ EVIDENCE_STRUCTURE = [10, 10, 10]
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10]
+# How many iterations the system will run for:
+NUMBER_OF_ITERATIONS = 100
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -47,6 +51,7 @@ class characteristic_model:
 
     TODO: Normal usage
     """
+
     def __init__(self, input_classes=[10,10], output_classes=10, number_of_users=10):
         """ Initializes len(input_classes) input variables ranging from 1 to
         input_classes[i]. Initializes one output class ranging from 1 to
@@ -96,10 +101,11 @@ class characteristic_model:
         P_C_1_given_E = joint.ask(self._C_1, self._input_variables)
 
         # Instantiate/Compile into resulting distribution
-        result = P_C_1_given_E.instantiate(evidence_vals)
+        result = P_C_1_given_E.compile().instantiate(evidence_vals)
         result_class = result.n_best(1)[0].to_int()
         result_prob = result.tabulate()[1][result_class-1]
         entropy = result.compute_shannon_entropy()
+        entropy = 0.1 if entropy < 0.1 else entropy
 
         # Append to report
         self._in_sequence.append(evidence)
@@ -143,7 +149,8 @@ class characteristic_model:
             # basically, the set will be {True} if all variables in elem are equal to the inputs,
             # which is the case we want to reinforce.
             if set([True if elem[j] == in_vals[j] else False for j in range(elem.size())]) == {True}:
-                dist[i] = (1+1/h)*dist[i]
+                if dist[i] < 0.80:
+                    dist[i] = (1+1/h)*dist[i]
         
         # Push into the distribution
         self._P_E_given_C_1.push(values, dist)
@@ -209,13 +216,15 @@ class population_simulator:
         # Retrieve characteristics
         characteristics = self._users[tuple(evidence)]
 
+        # Return a list containing both
         return evidence, characteristics
 
 
-    def get_users():
+    def get_users(self):
         """ Returns the whole users dictionary, which can then be used by
         other pieces of code for evaluation.
         """
+        # Return the user dictionary
         return self._users
 
 
@@ -249,35 +258,158 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
     except KeyError:
         # Define T vector with hard evidence, if possible
         if hard_label is not None:
-            T = [hard_label, evidence, identity, 0.1]
+            T = [hard_label, evidence, identity, 0.01]
 
     # Update user representation
-    user_characteristics[tuple(T[1] + [T[2]])]= T[0]
+    user_characteristics[tuple(T[1] + [T[2]])] = [soft_label]
 
     # Return the vector for fusion
     return T
 
 
-if __name__=="__main__":
+def calculate_accuracy(learned_dict, reference_dict):
+    """ This function calculates the classification accuracy given the learned
+    characteristics of the user.
+    """
+    count = 0
+    correct = 0
+    for key, val in learned_dict.items():
+        count += 1
+        if val == reference_dict[key]:
+            correct += 1
+
+    accuracy = (correct/count)
+
+    #print("Count:", count, "correct:", correct, "accuracy:", accuracy*100, "%.")
+
+    return [accuracy, count, correct]
+
+
+def plot_users(users, evidence):
+    # Set mpl parameters
+    mpl.rcParams['legend.fontsize'] = 10
+    #mpl.rcParams['text.usetex'] = True
+
+    colors=["blue", "red", "orange"]
+
+    # Initialize  and adjust figure
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    #fig.subplots_adjust(left=0,right=1,bottom=0,top=1)
+    ax.set_xlim([0,10])
+    ax.set_ylim([0,10])
+    ax.set_zlim([0,10])
+    ax.set_xlabel("C_1")
+    ax.set_ylabel("C_2")
+    ax.set_zlabel("C_3")
+    ax.view_init(elev=15., azim=45)
+
+    # Plot/Save
+    plt.hold(True)
+    for i, user in enumerate(users):
+        # Point
+        ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i+1))
+        
+    #ax.legend(loc='upper left', numpoints=1, ncol=3, fontsize=8, bbox_to_anchor=(0, 0))
+    #ax.legend(numpoints=1, ncol=3)
+    plt.show()
+    #plt.savefig("users_example.pdf")
+
+
+def iterative_test():
+    """ The "regular" test that is run with this script. 
+    
+    TODO: What does it do?
+    """
     # Initialize population simulator
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
 
     # Define models
     c1 = characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[0], NUMBER_OF_USERS)
 
-    
+    # List to maintain the accuracy of the system
+    accuracy = []
 
     # Run
-    for i in range(10):
+    for i in range(NUMBER_OF_ITERATIONS):
+        # Inform
+        print("Iteration {} of {}.".format(i, NUMBER_OF_ITERATIONS))
+        # Generate evidence and characteristics
         evidence, characteristics = population.generate()
         identity = evidence.pop()
-        
+        # Instantiate
         result_class, entropy = c1.instantiate(evidence, identity)
+        # Generate labels
         T = generate_label(result_class, entropy, evidence, identity, characteristics[0])
+        # Fuse into previous knowledge
         c1.fuse(T)
+        # Calculate accuracy
+        accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
     # Report
-    c1.report()
+    #c1.report()
+
+    with open("cenas.txt", "w") as results_file:
+        for item in accuracy:
+            results_file.write("{}\n".format(item))
 
     # Show learned user characteristics
-    pprint.pprint(user_characteristics)
+    #pprint.pprint(user_characteristics)
+
+    # accuracy, count, correct = zip(*accuracy)
+
+    # plt.subplot(3,1,1)
+    # plt.plot(accuracy)
+    # plt.title("Accuracy")
+    # plt.subplot(3,1,2)
+    # plt.plot(count)
+    # plt.title("Total Combinations Learned")
+    # plt.subplot(3,1,3)
+    # plt.plot(correct)
+    # plt.title("Correct Classifications")
+    # plt.tight_layout()
+    # plt.show()
+
+    # Show accuracy
+    #pprint.pprint(accuracy)
+
+
+def plot_from_file(filename):
+    """ Tiny function to plot the data files produced by the iterative tests. """
+    accuracy = []
+    count = []
+    correct = []
+    with open(filename) as results_file:
+        for line in results_file:
+            line = line.strip()
+            line = line.strip("[] ")
+            line = line.split(",")
+            accuracy.append(float(line[0]))
+            count.append(float(line[1]))
+            correct.append(float(line[2]))
+
+
+    plt.subplot(3,1,1)
+    plt.plot(accuracy)
+    plt.ylim([0.0, 1.1])
+    plt.title("Accuracy")
+    plt.subplot(3,1,2)
+    plt.plot(count)
+    plt.title("Total Combinations Learned")
+    plt.subplot(3,1,3)
+    plt.plot(correct)
+    plt.title("Correct Classifications")
+    plt.tight_layout()
+    plt.savefig("no_fusion.pdf")
+
+
+if __name__=="__main__":
+    # Configure Matplotlib
+    mpl.rcParams['ps.useafm'] = True
+    #mpl.rcParams['pdf.use14corefonts'] = True
+    mpl.rcParams['pdf.fonttype'] = 42
+    mpl.rcParams['axes.ymargin'] = 0.1
+
+    # Run tests
+    plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
+    #iterative_test()
