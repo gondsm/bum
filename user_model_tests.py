@@ -11,14 +11,19 @@ T vector = [L (chosen label), E (evidence), h (entropy)]
 from __future__ import division
 from __future__ import print_function
 
-# Standard imports
-import numpy as np
+# Standard
 import pprint
 import itertools
+
+# Numpy
+import numpy as np
+
+# Matplotlib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
-# Custom imports
+# Custom
 import probt
 
 
@@ -286,16 +291,22 @@ def calculate_accuracy(learned_dict, reference_dict):
 
 
 def plot_users(users, evidence):
-    # Set mpl parameters
-    mpl.rcParams['legend.fontsize'] = 10
-    #mpl.rcParams['text.usetex'] = True
+    """ This function plots a population of users. """
 
     colors=["blue", "red", "orange"]
+
+    # Retrieve users
+    user_vectors = []
+    for i in range(NUMBER_OF_USERS):
+        vec = users[tuple(evidence + [i+1])]
+        while len(vec) < 3:
+            vec.append(1)
+        user_vectors.append(vec)
+    print(user_vectors)
 
     # Initialize  and adjust figure
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    #fig.subplots_adjust(left=0,right=1,bottom=0,top=1)
     ax.set_xlim([0,10])
     ax.set_ylim([0,10])
     ax.set_zlim([0,10])
@@ -306,7 +317,7 @@ def plot_users(users, evidence):
 
     # Plot/Save
     plt.hold(True)
-    for i, user in enumerate(users):
+    for i, user in enumerate(user_vectors):
         # Point
         ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i+1))
         
@@ -314,6 +325,35 @@ def plot_users(users, evidence):
     #ax.legend(numpoints=1, ncol=3)
     plt.show()
     #plt.savefig("users_example.pdf")
+
+
+def plot_from_file(filename):
+    """ Tiny function to plot the data files produced by the iterative tests. """
+    accuracy = []
+    count = []
+    correct = []
+    with open(filename) as results_file:
+        for line in results_file:
+            line = line.strip()
+            line = line.strip("[] ")
+            line = line.split(",")
+            accuracy.append(float(line[0]))
+            count.append(float(line[1]))
+            correct.append(float(line[2]))
+
+
+    plt.subplot(3,1,1)
+    plt.plot(accuracy)
+    plt.ylim([0.0, 1.1])
+    plt.title("Accuracy")
+    plt.subplot(3,1,2)
+    plt.plot(count)
+    plt.title("Total Combinations Learned")
+    plt.subplot(3,1,3)
+    plt.plot(correct)
+    plt.title("Correct Classifications")
+    plt.tight_layout()
+    plt.savefig("no_fusion.pdf")
 
 
 def iterative_test():
@@ -374,35 +414,6 @@ def iterative_test():
     #pprint.pprint(accuracy)
 
 
-def plot_from_file(filename):
-    """ Tiny function to plot the data files produced by the iterative tests. """
-    accuracy = []
-    count = []
-    correct = []
-    with open(filename) as results_file:
-        for line in results_file:
-            line = line.strip()
-            line = line.strip("[] ")
-            line = line.split(",")
-            accuracy.append(float(line[0]))
-            count.append(float(line[1]))
-            correct.append(float(line[2]))
-
-
-    plt.subplot(3,1,1)
-    plt.plot(accuracy)
-    plt.ylim([0.0, 1.1])
-    plt.title("Accuracy")
-    plt.subplot(3,1,2)
-    plt.plot(count)
-    plt.title("Total Combinations Learned")
-    plt.subplot(3,1,3)
-    plt.plot(correct)
-    plt.title("Correct Classifications")
-    plt.tight_layout()
-    plt.savefig("no_fusion.pdf")
-
-
 if __name__=="__main__":
     # Configure Matplotlib
     mpl.rcParams['ps.useafm'] = True
@@ -411,5 +422,7 @@ if __name__=="__main__":
     mpl.rcParams['axes.ymargin'] = 0.1
 
     # Run tests
-    plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
+    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
     #iterative_test()
+    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
+    plot_users(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
