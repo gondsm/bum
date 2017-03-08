@@ -14,6 +14,7 @@ from __future__ import print_function
 # Standard
 import pprint
 import itertools
+import copy
 
 # Numpy
 import numpy as np
@@ -41,10 +42,10 @@ import probt
 NUMBER_OF_USERS = 10
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [10, 10] 
+EVIDENCE_STRUCTURE = [10, 10, 10] 
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
-CHARACTERISTICS_STRUCTURE = [10]
+CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
 NUMBER_OF_ITERATIONS = 100
 
@@ -212,7 +213,7 @@ class population_simulator:
         if profiles is None:
             self.__generate_uniform_population()
         else:
-            self.__generate_from_profiles(number_of_users, profiles)
+            self.__generate_from_profiles()
 
 
     def __generate_uniform_population(self):
@@ -229,7 +230,35 @@ class population_simulator:
 
     def __generate_from_profiles(self):
         """ Generates a population from a set of given profiles. """
-        pass
+        #print("Generating guys from profiles", profiles)
+        # Build the ranges for all evidence and create an iterator
+        a = [range(1, elem+1) for elem in self._evidence_structure]
+
+        # Initialize characteristics for all evidence combination uniformly
+        for i in range(self._number_of_users):
+            iterator = itertools.product(*a)
+            for comb in iterator:
+                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in self._characteristics_structure]
+        
+        # Re-initialize some evidence according to the profiles
+        for key in profiles:
+            # Attribute each user to a profile
+            attribution = np.random.randint(len(profiles[key]), size=self._number_of_users)
+
+            # Generate actual stuff
+            for i, p in enumerate(attribution):
+                # Get characteristics in selected profile
+                # we have to copy, otherwise stuff gets funky
+                # when profiles gets destroyed.
+                charac = copy.copy(profiles[key][p])
+
+                # Add noise
+                for j in range(len(charac)):
+                    charac[j] += np.random.randint(-1, 2)
+                #print(charac)
+
+                # Put into user population
+                self._users[key + (i+1,)] = charac
 
 
     def generate(self, user=None):
@@ -316,6 +345,29 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
+def cluster_population(population, evidence):
+    # Generate a couple of really clear clusters
+    # X = []
+    # for i in range(50):
+    #     X.append([np.random.randint(4), np.random.randint(4), np.random.randint(4)])
+    # for i in range(50):
+    #     X.append([np.random.randint(5,10), np.random.randint(5,10), np.random.randint(5,10)])
+
+    # Retrieve users
+    user_vectors = []
+    for i in range(NUMBER_OF_USERS):
+        vec = population[tuple(evidence + [i+1])]
+        while len(vec) < 3:
+            vec.append(1)
+        user_vectors.append(vec)
+
+    # Cluster
+    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full').fit(user_vectors)
+
+    # Return the means and covariances of the clusters
+    return gmm.means_, gmm.covariances_
+
+
 def plot_population(population, evidence):
     """ This function plots a population of users. """
 
@@ -350,29 +402,6 @@ def plot_population(population, evidence):
     #ax.legend(numpoints=1, ncol=3)
     plt.show()
     #plt.savefig("users_example.pdf")
-
-
-def cluster_population(population, evidence):
-    # Generate a couple of really clear clusters
-    # X = []
-    # for i in range(50):
-    #     X.append([np.random.randint(4), np.random.randint(4), np.random.randint(4)])
-    # for i in range(50):
-    #     X.append([np.random.randint(5,10), np.random.randint(5,10), np.random.randint(5,10)])
-
-    # Retrieve users
-    user_vectors = []
-    for i in range(NUMBER_OF_USERS):
-        vec = population[tuple(evidence + [i+1])]
-        while len(vec) < 3:
-            vec.append(1)
-        user_vectors.append(vec)
-
-    # Cluster
-    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full').fit(user_vectors)
-
-    # Return the means and covariances of the clusters
-    return gmm.means_, gmm.covariances_
 
 
 def plot_population_cluster(means, covariances):
@@ -507,6 +536,9 @@ def iterative_test():
         for item in accuracy:
             results_file.write("{}\n".format(item))
 
+    with open("results.pickle", "w") as pickle_file:
+        pass
+
     # Show learned user characteristics
     #pprint.pprint(user_characteristics)
 
@@ -537,8 +569,11 @@ if __name__=="__main__":
 
     # Run tests
     #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
-    iterative_test()
-    #population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
-    #plot_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
+    #iterative_test()
+
+    profiles = dict()
+    profiles[(2,3,2)] = [[2,2,2], [8,8,8]]
+    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    plot_population(population.get_users(), [2,3,2])
     #clusters = cluster_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
     #plot_population_cluster(*clusters)
