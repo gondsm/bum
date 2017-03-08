@@ -39,15 +39,15 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 10
+NUMBER_OF_USERS = 4
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [10, 10, 10] 
+EVIDENCE_STRUCTURE = [4, 4, 4] 
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 100
+NUMBER_OF_ITERATIONS = 3000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -320,9 +320,6 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
         if hard_label is not None:
             T = [hard_label, evidence, identity, 0.01]
 
-    # Update user representation
-    user_characteristics[tuple(T[1] + [T[2]])] = [soft_label]
-
     # Return the vector for fusion
     return T
 
@@ -496,7 +493,8 @@ def plot_from_file(filename):
     plt.plot(correct)
     plt.title("Correct Classifications")
     plt.tight_layout()
-    plt.savefig("no_fusion.pdf")
+    #plt.savefig("no_fusion.pdf")
+    plt.show()
 
 
 def iterative_test():
@@ -508,7 +506,9 @@ def iterative_test():
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
 
     # Define models
-    c1 = characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[0], NUMBER_OF_USERS)
+    c_models = []
+    for i in range(len(CHARACTERISTICS_STRUCTURE)):
+        c_models.append(characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[i], NUMBER_OF_USERS))
 
     # List to maintain the accuracy of the system
     accuracy = []
@@ -520,12 +520,17 @@ def iterative_test():
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
         identity = evidence.pop()
-        # Instantiate
-        result_class, entropy = c1.instantiate(evidence, identity)
-        # Generate labels
-        T = generate_label(result_class, entropy, evidence, identity, characteristics[0])
-        # Fuse into previous knowledge
-        c1.fuse(T)
+        char_result = []
+        for j in range(len(c_models)):
+            # Instantiate
+            result_class, entropy = c_models[j].instantiate(evidence, identity)
+            # Generate labels
+            T = generate_label(result_class, entropy, evidence, identity, characteristics[j])
+            char_result.append(result_class)
+            # Fuse into previous knowledge
+            c_models[j].fuse(T)
+        # Update user representation
+        user_characteristics[tuple(T[1] + [T[2]])] = char_result
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
@@ -544,17 +549,17 @@ def iterative_test():
 
     # accuracy, count, correct = zip(*accuracy)
 
-    # plt.subplot(3,1,1)
-    # plt.plot(accuracy)
-    # plt.title("Accuracy")
-    # plt.subplot(3,1,2)
-    # plt.plot(count)
-    # plt.title("Total Combinations Learned")
-    # plt.subplot(3,1,3)
-    # plt.plot(correct)
-    # plt.title("Correct Classifications")
-    # plt.tight_layout()
-    # plt.show()
+    #plt.subplot(3,1,1)
+    #plt.plot(accuracy[0])
+    #plt.title("Accuracy")
+    #plt.subplot(3,1,2)
+    #plt.plot(accuracy[1])
+    #plt.title("Total Combinations Learned")
+    #plt.subplot(3,1,3)
+    #plt.plot(accuracy[2])
+    #plt.title("Correct Classifications")
+    #plt.tight_layout()
+    #plt.show()
 
     # Show accuracy
     #pprint.pprint(accuracy)
@@ -568,12 +573,12 @@ if __name__=="__main__":
     mpl.rcParams['axes.ymargin'] = 0.1
 
     # Run tests
-    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
-    #iterative_test()
+    iterative_test()
+    plot_from_file("cenas.txt")
 
-    profiles = dict()
-    profiles[(2,3,2)] = [[2,2,2], [8,8,8]]
-    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
-    plot_population(population.get_users(), [2,3,2])
+    #profiles = dict()
+    #profiles[(2,3,2)] = [[2,2,2], [8,8,8]]
+    #population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    #plot_population(population.get_users(), [2,3,2])
     #clusters = cluster_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
     #plot_population_cluster(*clusters)
