@@ -17,15 +17,22 @@ import itertools
 
 # Numpy
 import numpy as np
+import numpy.random as rnd
 
 # Matplotlib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.patches import Ellipse
+
+# Scikit-learn
+from sklearn import mixture
+
+# Scipy
+from scipy import linalg
 
 # Custom
 import probt
-
 
 # Constants
 # These are global constant variables that guide the instantiation of the
@@ -34,7 +41,7 @@ import probt
 NUMBER_OF_USERS = 10
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [10, 10, 10] 
+EVIDENCE_STRUCTURE = [10, 10] 
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10]
@@ -182,7 +189,7 @@ class characteristic_model:
 class population_simulator:
     """ A class for simulating a user population. """
 
-    def __init__(self, number_of_users=10, evidence_structure=[10,10,10], characteristics_structure=[10]):
+    def __init__(self, number_of_users=10, evidence_structure=[10,10,10], characteristics_structure=[10], profiles=None):
         """ Initialize a pool of number_of_users users.
         It receives characteristics and evidence structures. These are lists that
         maintain the number of states of each variable and, implicitly, how 
@@ -199,24 +206,43 @@ class population_simulator:
         self._number_of_users = number_of_users
         self._evidence_structure = evidence_structure
         self._characteristics_structure = characteristics_structure
+        self._profiles = profiles
 
+        # Generate population
+        if profiles is None:
+            self.__generate_uniform_population()
+        else:
+            self.__generate_from_profiles(number_of_users, profiles)
+
+
+    def __generate_uniform_population(self):
+        """ Generates a population without set profiles using uniform distributions. """
         # Build the ranges for all evidence and create an iterator
-        a = [range(1, elem+1) for elem in evidence_structure]
+        a = [range(1, elem+1) for elem in self._evidence_structure]
 
         # Initialize characteristics for all evidence combination
-        for i in range(number_of_users):
+        for i in range(self._number_of_users):
             iterator = itertools.product(*a)
             for comb in iterator:
-                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in characteristics_structure]
+                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in self._characteristics_structure]
 
 
-    def generate(self, user=-1):
+    def __generate_from_profiles(self):
+        """ Generates a population from a set of given profiles. """
+        pass
+
+
+    def generate(self, user=None):
         """ Generates a combination of evidence and labels, according to
         the profiles loaded in self._users.
+        If a user ID is received, it is used to retrieve evidence from that user.
         """
         # Generate evidence
         evidence = [np.random.randint(1, elem+1) for elem in self._evidence_structure]
-        evidence.append(np.random.randint(1, self._number_of_users+1))
+        if user is not None:
+            evidence.append(user)
+        else:
+            evidence.append(np.random.randint(1, self._number_of_users+1))
 
         # Retrieve characteristics
         characteristics = self._users[tuple(evidence)]
@@ -290,7 +316,7 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
-def plot_users(users, evidence):
+def plot_population(population, evidence):
     """ This function plots a population of users. """
 
     colors=["blue", "red", "orange"]
@@ -298,11 +324,10 @@ def plot_users(users, evidence):
     # Retrieve users
     user_vectors = []
     for i in range(NUMBER_OF_USERS):
-        vec = users[tuple(evidence + [i+1])]
+        vec = population[tuple(evidence + [i+1])]
         while len(vec) < 3:
             vec.append(1)
         user_vectors.append(vec)
-    print(user_vectors)
 
     # Initialize  and adjust figure
     fig = plt.figure()
@@ -325,6 +350,95 @@ def plot_users(users, evidence):
     #ax.legend(numpoints=1, ncol=3)
     plt.show()
     #plt.savefig("users_example.pdf")
+
+
+def cluster_population(population, evidence):
+    # Generate a couple of really clear clusters
+    # X = []
+    # for i in range(50):
+    #     X.append([np.random.randint(4), np.random.randint(4), np.random.randint(4)])
+    # for i in range(50):
+    #     X.append([np.random.randint(5,10), np.random.randint(5,10), np.random.randint(5,10)])
+
+    # Retrieve users
+    user_vectors = []
+    for i in range(NUMBER_OF_USERS):
+        vec = population[tuple(evidence + [i+1])]
+        while len(vec) < 3:
+            vec.append(1)
+        user_vectors.append(vec)
+
+    # Cluster
+    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full').fit(user_vectors)
+
+    # Return the means and covariances of the clusters
+    return gmm.means_, gmm.covariances_
+
+
+def plot_population_cluster(means, covariances):
+    """ Given the result of the E-M algorithm, this function plots the clusters
+    that were determined.
+    """
+    colors = [[1, 0, 0, 0.2],
+              [0, 1, 0, 0.2],
+              [0, 0, 1, 0.2]]
+    color_iter = itertools.cycle(colors)
+
+    def plot_ellipsoid(radii, center, axes):
+        """ Plots an ellipsoid in the given axes
+        radii = [x,y,z]
+        center = [x,y,z]
+        """
+        #coefs = (1, 1, 2)  # Coefficients in a0/c x**2 + a1/c y**2 + a2/c z**2 = 1 
+        # Radii corresponding to the coefficients:
+        #rx, ry, rz = 1/np.sqrt(coefs)
+        rx, ry, rz = radii
+
+        # Set of all spherical angles:
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+
+        # Cartesian coordinates that correspond to the spherical angles:
+        # (this is the equation of an ellipsoid):
+        x = rx * np.outer(np.cos(u), np.sin(v)) + center[0]
+        y = ry * np.outer(np.sin(u), np.sin(v)) + center[1]
+        z = rz * np.outer(np.ones_like(u), np.cos(v)) + center[2]
+
+        # Plot:
+        axes.plot_surface(x, y, z,  rstride=4, cstride=4, linewidth=0, color=next(color_iter))
+
+        ax.set_xlabel("C_1")
+        ax.set_ylabel("C_2")
+        ax.set_zlabel("C_3")
+
+    # Create figure
+    fig = plt.figure()  # Square figure
+    ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(elev=15., azim=-45)
+
+
+    # Plot clusters
+    for mean, cov in zip(means, covariances):
+        # Determine axis radii
+        v, w = linalg.eigh(cov)
+        v = 2. * np.sqrt(2.) * np.sqrt(v)
+        u = w[0] / linalg.norm(w[0])
+
+        # Plot
+        plot_ellipsoid(v, mean, ax)
+
+    # Set plot limits and labels
+    ax.set_xlim([0, 10])
+    ax.set_ylim([0, 10])
+    ax.set_zlim([0, 10])
+    ax.set_xlabel("C_1")
+    ax.set_ylabel("C_2")
+    ax.set_zlabel("C_3")
+
+
+    # Show plot
+    plt.show()
+    #plt.savefig("cluster_example.pdf")
 
 
 def plot_from_file(filename):
@@ -423,6 +537,8 @@ if __name__=="__main__":
 
     # Run tests
     #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
-    #iterative_test()
-    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
-    plot_users(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
+    iterative_test()
+    #population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
+    #plot_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
+    #clusters = cluster_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
+    #plot_population_cluster(*clusters)
