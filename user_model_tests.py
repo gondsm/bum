@@ -15,6 +15,7 @@ from __future__ import print_function
 import pprint
 import itertools
 import copy
+import os
 
 # Numpy
 import numpy as np
@@ -39,15 +40,15 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 4
+NUMBER_OF_USERS = 10
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [4, 4, 4] 
+EVIDENCE_STRUCTURE = [4, 4] 
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 3000
+NUMBER_OF_ITERATIONS = 1000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -55,6 +56,10 @@ NUMBER_OF_ITERATIONS = 3000
 # and identity. No initialization will be done; uninitialized values
 # will raise a KeyError.
 user_characteristics = dict()
+
+# This dictionary maintains a list of previously-trained combinations,
+# to guide the label generator
+visited_combinations = dict()
 
 
 class characteristic_model:
@@ -241,16 +246,16 @@ class population_simulator:
                 self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in self._characteristics_structure]
         
         # Re-initialize some evidence according to the profiles
-        for key in profiles:
+        for key in self._profiles:
             # Attribute each user to a profile
-            attribution = np.random.randint(len(profiles[key]), size=self._number_of_users)
+            attribution = np.random.randint(len(self._profiles[key]), size=self._number_of_users)
 
             # Generate actual stuff
             for i, p in enumerate(attribution):
                 # Get characteristics in selected profile
                 # we have to copy, otherwise stuff gets funky
                 # when profiles gets destroyed.
-                charac = copy.copy(profiles[key][p])
+                charac = copy.copy(self._profiles[key][p])
 
                 # Add noise
                 for j in range(len(charac)):
@@ -314,11 +319,11 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
 
     try:
         # If the value was initialized:
-        user_characteristics[tuple(T[1] + [T[2]])]
+        visited_combinations[tuple(T[1] + [T[2]])]
     except KeyError:
         # Define T vector with hard evidence, if possible
         if hard_label is not None:
-            T = [hard_label, evidence, identity, 0.01]
+            T = [hard_label, evidence, identity, 0.001]
 
     # Return the vector for fusion
     return T
@@ -328,17 +333,22 @@ def calculate_accuracy(learned_dict, reference_dict):
     """ This function calculates the classification accuracy given the learned
     characteristics of the user.
     """
+    # Initialize counters
     count = 0
     correct = 0
+
+    # Go through all combinations
     for key, val in learned_dict.items():
         count += 1
-        if val == reference_dict[key]:
-            correct += 1
+        # Compare results for each characteristic
+        for i in range(len(val)):
+            if val[i] == reference_dict[key][i]:
+                correct += 1/len(val)
 
+    # Compute accuracy
     accuracy = (correct/count)
 
-    #print("Count:", count, "correct:", correct, "accuracy:", accuracy*100, "%.")
-
+    # And return a new list
     return [accuracy, count, correct]
 
 
@@ -365,7 +375,7 @@ def cluster_population(population, evidence):
     return gmm.means_, gmm.covariances_
 
 
-def plot_population(population, evidence):
+def plot_population(population, evidence, filename=None):
     """ This function plots a population of users. """
 
     colors=["blue", "red", "orange"]
@@ -397,11 +407,13 @@ def plot_population(population, evidence):
         
     #ax.legend(loc='upper left', numpoints=1, ncol=3, fontsize=8, bbox_to_anchor=(0, 0))
     #ax.legend(numpoints=1, ncol=3)
-    plt.show()
-    #plt.savefig("users_example.pdf")
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
 
 
-def plot_population_cluster(means, covariances):
+def plot_population_cluster(means, covariances, filename=None):
     """ Given the result of the E-M algorithm, this function plots the clusters
     that were determined.
     """
@@ -440,7 +452,7 @@ def plot_population_cluster(means, covariances):
     # Create figure
     fig = plt.figure()  # Square figure
     ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(elev=15., azim=-45)
+    ax.view_init(elev=15., azim=45)
 
 
     # Plot clusters
@@ -463,15 +475,24 @@ def plot_population_cluster(means, covariances):
 
 
     # Show plot
-    plt.show()
-    #plt.savefig("cluster_example.pdf")
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
 
 
-def plot_from_file(filename):
-    """ Tiny function to plot the data files produced by the iterative tests. """
+def plot_from_file(filename, filename2=None):
+    """ Tiny function to plot the data files produced by the iterative tests. 
+
+    If two filenames are given, the accuracies of both are superimposed
+    """
+    # Allocate vectors
     accuracy = []
+    accuracy2 = []
     count = []
     correct = []
+
+    # Read from file(s)
     with open(filename) as results_file:
         for line in results_file:
             line = line.strip()
@@ -481,9 +502,21 @@ def plot_from_file(filename):
             count.append(float(line[1]))
             correct.append(float(line[2]))
 
+    if filename2 is not None:
+        with open(filename2) as results_file:
+            for line in results_file:
+                line = line.strip()
+                line = line.strip("[] ")
+                line = line.split(",")
+                accuracy2.append(float(line[0]))
 
+    # Plot stuff
     plt.subplot(3,1,1)
-    plt.plot(accuracy)
+    plt.plot(accuracy, label="fusion")
+    if filename2 is not None:
+        plt.hold(True)
+        plt.plot(accuracy2, label="no fusion")
+        plt.legend(loc=5)
     plt.ylim([0.0, 1.1])
     plt.title("Accuracy")
     plt.subplot(3,1,2)
@@ -493,8 +526,7 @@ def plot_from_file(filename):
     plt.plot(correct)
     plt.title("Correct Classifications")
     plt.tight_layout()
-    #plt.savefig("no_fusion.pdf")
-    plt.show()
+    plt.savefig("zz_results.pdf")
 
 
 def iterative_test():
@@ -503,7 +535,9 @@ def iterative_test():
     TODO: What does it do?
     """
     # Initialize population simulator
-    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE)
+    profiles = dict()
+    profiles[(2,3)] = [[2,8,2], [8,2,8]]
+    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
 
     # Define models
     c_models = []
@@ -516,7 +550,8 @@ def iterative_test():
     # Run
     for i in range(NUMBER_OF_ITERATIONS):
         # Inform
-        print("Iteration {} of {}.".format(i, NUMBER_OF_ITERATIONS))
+        os.system('clear')
+        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
         identity = evidence.pop()
@@ -526,17 +561,19 @@ def iterative_test():
             result_class, entropy = c_models[j].instantiate(evidence, identity)
             # Generate labels
             T = generate_label(result_class, entropy, evidence, identity, characteristics[j])
+            #T = generate_label(characteristics[j], entropy, evidence, identity, characteristics[j])
+            # Append to results vector
             char_result.append(result_class)
             # Fuse into previous knowledge
             c_models[j].fuse(T)
+        # Mark combination as visited
+        visited_combinations[tuple(evidence) + (identity,)] = True
         # Update user representation
-        user_characteristics[tuple(T[1] + [T[2]])] = char_result
+        user_characteristics[tuple(evidence) + (identity,)] = copy.copy(char_result)
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
-    # Report
-    #c1.report()
-
+    # Save results to file
     with open("cenas.txt", "w") as results_file:
         for item in accuracy:
             results_file.write("{}\n".format(item))
@@ -544,25 +581,13 @@ def iterative_test():
     with open("results.pickle", "w") as pickle_file:
         pass
 
-    # Show learned user characteristics
-    #pprint.pprint(user_characteristics)
-
-    # accuracy, count, correct = zip(*accuracy)
-
-    #plt.subplot(3,1,1)
-    #plt.plot(accuracy[0])
-    #plt.title("Accuracy")
-    #plt.subplot(3,1,2)
-    #plt.plot(accuracy[1])
-    #plt.title("Total Combinations Learned")
-    #plt.subplot(3,1,3)
-    #plt.plot(accuracy[2])
-    #plt.title("Correct Classifications")
-    #plt.tight_layout()
-    #plt.show()
-
-    # Show accuracy
-    #pprint.pprint(accuracy)
+    # Plot some clusters
+    plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
+    plot_population(user_characteristics, [2,3], "zz_result_pop.pdf")
+    clusters = cluster_population(population.get_users(), [2,3])
+    plot_population_cluster(*clusters, filename="zz_original_clusters.pdf")
+    clusters = cluster_population(user_characteristics, [2,3])
+    plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
 
 
 if __name__=="__main__":
@@ -572,13 +597,22 @@ if __name__=="__main__":
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['axes.ymargin'] = 0.1
 
+    # Initialize population
+    # Build the ranges for all evidence and create an iterator
+    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
+
+    # Initialize characteristics for all evidence combination
+    for i in range(NUMBER_OF_USERS):
+        iterator = itertools.product(*a)
+        for comb in iterator:
+            user_characteristics[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
+
+
     # Run tests
     iterative_test()
     plot_from_file("cenas.txt")
 
-    #profiles = dict()
-    #profiles[(2,3,2)] = [[2,2,2], [8,8,8]]
-    #population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
-    #plot_population(population.get_users(), [2,3,2])
-    #clusters = cluster_population(population.get_users(), [1]*len(EVIDENCE_STRUCTURE))
-    #plot_population_cluster(*clusters)
+    #debug_fusion()
+
+    # Generate one of the paper figures
+    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
