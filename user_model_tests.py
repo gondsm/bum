@@ -40,7 +40,7 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 10
+NUMBER_OF_USERS = 20
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
 EVIDENCE_STRUCTURE = [4, 4] 
@@ -48,7 +48,7 @@ EVIDENCE_STRUCTURE = [4, 4]
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 1000
+NUMBER_OF_ITERATIONS = 2000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -573,6 +573,11 @@ def iterative_test():
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
+        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/8)):
+            clusters = cluster_population(user_characteristics, [2,3])
+            plot_population_cluster(*clusters, filename="zz_clusters_iter{}.pdf".format(i))
+            plot_population(user_characteristics, [2,3], "zz_pop_iter{}.pdf".format(i))
+
     # Save results to file
     with open("cenas.txt", "w") as results_file:
         for item in accuracy:
@@ -611,8 +616,6 @@ if __name__=="__main__":
     # Run tests
     iterative_test()
     plot_from_file("cenas.txt")
-
-    #debug_fusion()
 
     # Generate one of the paper figures
     #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
