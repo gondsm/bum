@@ -352,7 +352,7 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
-def cluster_population(population, evidence):
+def cluster_population(population, evidence, return_gmm=False):
     # Generate a couple of really clear clusters
     # X = []
     # for i in range(50):
@@ -371,8 +371,30 @@ def cluster_population(population, evidence):
     # Cluster
     gmm = mixture.GaussianMixture(n_components=2, covariance_type='full').fit(user_vectors)
 
-    # Return the means and covariances of the clusters
-    return gmm.means_, gmm.covariances_
+    # Return some results
+    if return_gmm:
+        # Return the raw mixture model
+        return gmm
+    else:
+        # Return the means and covariances of the clusters
+        return gmm.means_, gmm.covariances_
+
+
+def cluster_kl(gmm_p, gmm_q, n_samples=10**5):
+    """ Kullback-Leibler Divergence of Gaussian Mixture Models based on a
+    Monte-Carlo technique.
+
+    Inspired by https://stackoverflow.com/questions/26079881/kl-divergence-of-two-gmms
+    """
+    # Get some samples
+    X, _ = gmm_p.sample(n_samples)
+
+    # Get probabilities
+    log_p_X = gmm_p.score_samples(X)
+    log_q_X = gmm_q.score_samples(X)
+
+    # Calculate Dkl
+    return log_p_X.mean() - log_q_X.mean()
 
 
 def plot_population(population, evidence, filename=None):
@@ -595,6 +617,15 @@ def iterative_test():
     plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
 
 
+def debug():
+    profiles = dict()
+    profiles[(2,3)] = [[2,8,2], [8,2,8]]
+    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    clusters1 = cluster_population(population.get_users(), [2,3], return_gmm=True)
+    clusters2 = cluster_population(population.get_users(), [2,4], return_gmm=True)
+    print(cluster_kl(clusters1, clusters2))
+
+
 if __name__=="__main__":
     # Configure Matplotlib
     mpl.rcParams['ps.useafm'] = True
@@ -616,6 +647,7 @@ if __name__=="__main__":
     # Run tests
     iterative_test()
     plot_from_file("cenas.txt")
+    #debug()
 
     # Generate one of the paper figures
     #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
