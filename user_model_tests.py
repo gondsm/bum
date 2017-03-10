@@ -16,6 +16,7 @@ import pprint
 import itertools
 import copy
 import os
+import pickle
 
 # Numpy
 import numpy as np
@@ -353,12 +354,9 @@ def calculate_accuracy(learned_dict, reference_dict):
 
 
 def cluster_population(population, evidence, return_gmm=False):
-    # Generate a couple of really clear clusters
-    # X = []
-    # for i in range(50):
-    #     X.append([np.random.randint(4), np.random.randint(4), np.random.randint(4)])
-    # for i in range(50):
-    #     X.append([np.random.randint(5,10), np.random.randint(5,10), np.random.randint(5,10)])
+    """ Clusters the given population for the given evidence. 
+    Returns the raw Gaussian Mixture if requested.
+    """
 
     # Retrieve users
     user_vectors = []
@@ -374,7 +372,7 @@ def cluster_population(population, evidence, return_gmm=False):
     # Return some results
     if return_gmm:
         # Return the raw mixture model
-        return gmm
+        return gmm.means_, gmm.covariances_, gmm
     else:
         # Return the means and covariances of the clusters
         return gmm.means_, gmm.covariances_
@@ -503,7 +501,7 @@ def plot_population_cluster(means, covariances, filename=None):
         plt.savefig(filename)
 
 
-def plot_from_file(filename, filename2=None):
+def plot_from_file(filename, filename2=None, is_pickle=False):
     """ Tiny function to plot the data files produced by the iterative tests. 
 
     If two filenames are given, the accuracies of both are superimposed
@@ -513,27 +511,41 @@ def plot_from_file(filename, filename2=None):
     accuracy2 = []
     count = []
     correct = []
+    kl = []
 
     # Read from file(s)
-    with open(filename) as results_file:
-        for line in results_file:
-            line = line.strip()
-            line = line.strip("[] ")
-            line = line.split(",")
-            accuracy.append(float(line[0]))
-            count.append(float(line[1]))
-            correct.append(float(line[2]))
-
-    if filename2 is not None:
-        with open(filename2) as results_file:
+    if is_pickle:
+        with open(filename, "rb") as pickle_file:
+            temp, kl = pickle.load(pickle_file)
+            for elem in temp:
+                accuracy.append(elem[0])
+                count.append(elem[1])
+                correct.append(elem[2])
+    else:
+        with open(filename) as results_file:
             for line in results_file:
                 line = line.strip()
                 line = line.strip("[] ")
                 line = line.split(",")
-                accuracy2.append(float(line[0]))
+                accuracy.append(float(line[0]))
+                count.append(float(line[1]))
+                correct.append(float(line[2]))
+
+        if filename2 is not None:
+            with open(filename2) as results_file:
+                for line in results_file:
+                    line = line.strip()
+                    line = line.strip("[] ")
+                    line = line.split(",")
+                    accuracy2.append(float(line[0]))
 
     # Plot stuff
-    plt.subplot(3,1,1)
+    # Determine number of subplots
+    num = 3
+    if kl:
+        num = 4
+    # Actually plot
+    plt.subplot(num,1,1)
     plt.plot(accuracy, label="fusion")
     if filename2 is not None:
         plt.hold(True)
@@ -541,12 +553,18 @@ def plot_from_file(filename, filename2=None):
         plt.legend(loc=5)
     plt.ylim([0.0, 1.1])
     plt.title("Accuracy")
-    plt.subplot(3,1,2)
+    plt.subplot(num,1,2)
     plt.plot(count)
     plt.title("Total Combinations Learned")
-    plt.subplot(3,1,3)
+    plt.subplot(num,1,3)
     plt.plot(correct)
     plt.title("Correct Classifications")
+    
+    if kl:
+        plt.subplot(num,1,4)
+        plt.plot([k[0] for k in kl], [k[1] for k in kl])
+        plt.title("K-L Divergence")
+
     plt.tight_layout()
     plt.savefig("zz_results.pdf")
 
@@ -568,6 +586,9 @@ def iterative_test():
 
     # List to maintain the accuracy of the system
     accuracy = []
+
+    # List to maintain the K-L divergence to the original clusters
+    kl = []
 
     # Run
     for i in range(NUMBER_OF_ITERATIONS):
@@ -595,18 +616,24 @@ def iterative_test():
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
+        # If i is in a certain value, we calculate the clusters
         if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/8)):
-            clusters = cluster_population(user_characteristics, [2,3])
-            plot_population_cluster(*clusters, filename="zz_clusters_iter{}.pdf".format(i))
+            # Cluster population
+            clusters = cluster_population(user_characteristics, [2,3], return_gmm=True)
+            # Plot
+            plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{}.pdf".format(i))
+            # Calculate divergence to reference population
+            kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), [2,3], return_gmm=True)[2])])
+            # Plot population
             plot_population(user_characteristics, [2,3], "zz_pop_iter{}.pdf".format(i))
 
-    # Save results to file
+    # Save results to file (raw text and pickle)
     with open("cenas.txt", "w") as results_file:
         for item in accuracy:
             results_file.write("{}\n".format(item))
 
-    with open("results.pickle", "w") as pickle_file:
-        pass
+    with open("results.pickle", "wb") as pickle_file:
+        pickle.dump([accuracy, kl], pickle_file)
 
     # Plot some clusters
     plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
@@ -621,8 +648,8 @@ def debug():
     profiles = dict()
     profiles[(2,3)] = [[2,8,2], [8,2,8]]
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
-    clusters1 = cluster_population(population.get_users(), [2,3], return_gmm=True)
-    clusters2 = cluster_population(population.get_users(), [2,4], return_gmm=True)
+    _, _, clusters1 = cluster_population(population.get_users(), [2,3], return_gmm=True)
+    _, _, clusters2 = cluster_population(population.get_users(), [2,4], return_gmm=True)
     print(cluster_kl(clusters1, clusters2))
 
 
@@ -645,8 +672,9 @@ if __name__=="__main__":
 
 
     # Run tests
-    iterative_test()
-    plot_from_file("cenas.txt")
+    #iterative_test()
+    #plot_from_file("cenas.txt")
+    plot_from_file("results.pickle", is_pickle=True)
     #debug()
 
     # Generate one of the paper figures
