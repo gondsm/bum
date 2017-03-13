@@ -41,7 +41,7 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 20
+NUMBER_OF_USERS = 30
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
 EVIDENCE_STRUCTURE = [4, 4] 
@@ -49,7 +49,7 @@ EVIDENCE_STRUCTURE = [4, 4]
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 2000
+NUMBER_OF_ITERATIONS = 3000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -353,7 +353,7 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
-def cluster_population(population, evidence, return_gmm=False):
+def cluster_population(population, evidence, return_gmm=False, num_clusters=2):
     """ Clusters the given population for the given evidence. 
     Returns the raw Gaussian Mixture if requested.
     """
@@ -367,7 +367,7 @@ def cluster_population(population, evidence, return_gmm=False):
         user_vectors.append(vec)
 
     # Cluster
-    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full').fit(user_vectors)
+    gmm = mixture.GaussianMixture(n_components=num_clusters, covariance_type='full').fit(user_vectors)
 
     # Return some results
     if return_gmm:
@@ -439,7 +439,8 @@ def plot_population_cluster(means, covariances, filename=None):
     """
     colors = [[1, 0, 0, 0.2],
               [0, 1, 0, 0.2],
-              [0, 0, 1, 0.2]]
+              [0, 0, 1, 0.2],
+              [1, 0, 1, 0.2]]
     color_iter = itertools.cycle(colors)
 
     def plot_ellipsoid(radii, center, axes):
@@ -511,6 +512,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
     accuracy2 = []
     count = []
     correct = []
+    correct2 = []
     kl = []
 
     # Read from file(s)
@@ -538,6 +540,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
                     line = line.strip("[] ")
                     line = line.split(",")
                     accuracy2.append(float(line[0]))
+                    correct2.append(float(line[2]))
 
     # Plot stuff
     # Determine number of subplots
@@ -546,20 +549,30 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
         num = 4
     # Actually plot
     plt.subplot(num,1,1)
-    plt.plot(accuracy, label="fusion")
+    plt.plot([x*100 for x in accuracy], label="fusion")
     if filename2 is not None:
         plt.hold(True)
-        plt.plot(accuracy2, label="no fusion")
+        plt.plot([x*100 for x in accuracy2], label="no fusion")
         plt.legend(loc=5)
-    plt.ylim([0.0, 1.1])
-    plt.title("Accuracy")
+    plt.ylim([0.0, 110])
+    plt.xlim([0, len(accuracy)])
+    plt.ylabel("Accuracy (%)")
+    #plt.title("Accuracy")
     plt.subplot(num,1,2)
     plt.plot(count)
-    plt.title("Total Combinations Learned")
+    plt.xlim([0, len(accuracy)])
+    #plt.title("Total Combinations Learned")
+    plt.ylabel("Combinations")
     plt.subplot(num,1,3)
-    plt.plot(correct)
-    plt.title("Correct Classifications")
-    
+    plt.plot(correct, label="fusion")
+    if filename2 is not None:
+        plt.hold(True)
+        plt.plot(correct2, label="no fusion")
+        plt.legend(loc=5)
+    plt.xlim([0, len(accuracy)])
+    plt.ylabel("Correct Classifications")
+    plt.xlabel("Iterations (k)")
+
     if kl:
         plt.subplot(num,1,4)
         plt.plot([k[0] for k in kl], [k[1] for k in kl])
@@ -576,7 +589,8 @@ def iterative_test():
     """
     # Initialize population simulator
     profiles = dict()
-    profiles[(2,3)] = [[2,8,2], [8,2,8]]
+    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
+    num_clusters = len(profiles[(2,3)])
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
 
     # Define models
@@ -617,15 +631,15 @@ def iterative_test():
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
         # If i is in a certain value, we calculate the clusters
-        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/8)):
+        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/10)):
             # Cluster population
-            clusters = cluster_population(user_characteristics, [2,3], return_gmm=True)
+            clusters = cluster_population(user_characteristics, [2,3], return_gmm=True, num_clusters=num_clusters)
             # Plot
-            plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{}.pdf".format(i))
+            plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{0:05d}.pdf".format(i))
             # Calculate divergence to reference population
             kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), [2,3], return_gmm=True)[2])])
             # Plot population
-            plot_population(user_characteristics, [2,3], "zz_pop_iter{}.pdf".format(i))
+            plot_population(user_characteristics, [2,3], "zz_pop_iter{0:05d}.pdf".format(i))
 
     # Save results to file (raw text and pickle)
     with open("cenas.txt", "w") as results_file:
@@ -638,19 +652,18 @@ def iterative_test():
     # Plot some clusters
     plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
     plot_population(user_characteristics, [2,3], "zz_result_pop.pdf")
-    clusters = cluster_population(population.get_users(), [2,3])
+    clusters = cluster_population(population.get_users(), [2,3], num_clusters=num_clusters)
     plot_population_cluster(*clusters, filename="zz_original_clusters.pdf")
-    clusters = cluster_population(user_characteristics, [2,3])
+    clusters = cluster_population(user_characteristics, [2,3], num_clusters=num_clusters)
     plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
 
 
 def debug():
     profiles = dict()
-    profiles[(2,3)] = [[2,8,2], [8,2,8]]
+    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
-    _, _, clusters1 = cluster_population(population.get_users(), [2,3], return_gmm=True)
-    _, _, clusters2 = cluster_population(population.get_users(), [2,4], return_gmm=True)
-    print(cluster_kl(clusters1, clusters2))
+    plot_population(population.get_users(), [2,3])
+    #print(cluster_kl(clusters1, clusters2))
 
 
 if __name__=="__main__":
@@ -672,10 +685,10 @@ if __name__=="__main__":
 
 
     # Run tests
-    #iterative_test()
+    iterative_test()
     #plot_from_file("cenas.txt")
-    plot_from_file("results.pickle", is_pickle=True)
+    #plot_from_file("results.pickle", is_pickle=True)
     #debug()
 
     # Generate one of the paper figures
-    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
+    plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
