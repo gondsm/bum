@@ -17,6 +17,8 @@ import itertools
 import copy
 import os
 import pickle
+from multiprocessing import Pool
+from multiprocessing import Process
 
 # Numpy
 import numpy as np
@@ -49,7 +51,7 @@ EVIDENCE_STRUCTURE = [4, 4]
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 3000
+NUMBER_OF_ITERATIONS = 5000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -338,16 +340,17 @@ def calculate_accuracy(learned_dict, reference_dict):
     count = 0
     correct = 0
 
+    count = len(visited_combinations.items())
+
     # Go through all combinations
     for key, val in learned_dict.items():
-        count += 1
         # Compare results for each characteristic
         for i in range(len(val)):
             if val[i] == reference_dict[key][i]:
                 correct += 1/len(val)
 
     # Compute accuracy
-    accuracy = (correct/count)
+    accuracy = (correct/len(learned_dict.items()))
 
     # And return a new list
     return [accuracy, count, correct]
@@ -582,7 +585,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
     plt.savefig("zz_results.pdf")
 
 
-def iterative_test():
+def iterative_test(pickle_file="results.pickle", clustering=False):
     """ The "regular" test that is run with this script. 
     
     TODO: What does it do?
@@ -609,6 +612,8 @@ def iterative_test():
         # Inform
         os.system('clear')
         print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        # Reset population
+        reset_population()
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
         identity = evidence.pop()
@@ -631,7 +636,7 @@ def iterative_test():
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
         # If i is in a certain value, we calculate the clusters
-        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/10)):
+        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/10)) and clustering == True:
             # Cluster population
             clusters = cluster_population(user_characteristics, [2,3], return_gmm=True, num_clusters=num_clusters)
             # Plot
@@ -646,16 +651,29 @@ def iterative_test():
         for item in accuracy:
             results_file.write("{}\n".format(item))
 
-    with open("results.pickle", "wb") as pickle_file:
+    with open(pickle_file, "wb") as pickle_file:
         pickle.dump([accuracy, kl], pickle_file)
 
     # Plot some clusters
-    plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
-    plot_population(user_characteristics, [2,3], "zz_result_pop.pdf")
-    clusters = cluster_population(population.get_users(), [2,3], num_clusters=num_clusters)
-    plot_population_cluster(*clusters, filename="zz_original_clusters.pdf")
-    clusters = cluster_population(user_characteristics, [2,3], num_clusters=num_clusters)
-    plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
+    if clustering == True:
+        plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
+        plot_population(user_characteristics, [2,3], "zz_result_pop.pdf")
+        clusters = cluster_population(population.get_users(), [2,3], num_clusters=num_clusters)
+        plot_population_cluster(*clusters, filename="zz_original_clusters.pdf")
+        clusters = cluster_population(user_characteristics, [2,3], num_clusters=num_clusters)
+        plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
+
+
+def reset_population():
+    # Initialize population
+    # Build the ranges for all evidence and create an iterator
+    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
+
+    # Initialize characteristics for all evidence combination
+    for i in range(NUMBER_OF_USERS):
+        iterator = itertools.product(*a)
+        for comb in iterator:
+            user_characteristics[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
 
 
 def debug():
@@ -673,22 +691,22 @@ if __name__=="__main__":
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['axes.ymargin'] = 0.1
 
-    # Initialize population
-    # Build the ranges for all evidence and create an iterator
-    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
-
-    # Initialize characteristics for all evidence combination
-    for i in range(NUMBER_OF_USERS):
-        iterator = itertools.product(*a)
-        for comb in iterator:
-            user_characteristics[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
+    #
+    #reset_population()
+    
 
 
     # Run tests
-    iterative_test()
+    #p = Pool(1)
+    #p.map(iterative_test, ["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
+    for i in range(4, 11):
+        p = Process(target=iterative_test, args=("many_results/results{0:03d}.pickle".format(i),))
+        p.start()
+        p.join()
+    #iterative_test()
     #plot_from_file("cenas.txt")
     #plot_from_file("results.pickle", is_pickle=True)
     #debug()
 
     # Generate one of the paper figures
-    plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
+    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
