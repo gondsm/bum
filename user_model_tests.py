@@ -559,15 +559,18 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
     # Plot stuff
     # Determine number of subplots
     num = 3
+    dimensions = (7,8)
     if kl:
         num = 4
     # Actually plot
+    plt.figure(figsize=dimensions)
     plt.subplot(num,1,1)
     plt.plot([x*100 for x in accuracy], label="fusion")
     if filename2 is not None:
         plt.hold(True)
         plt.plot([x*100 for x in accuracy2], label="no fusion")
-        plt.legend(loc=5)
+        plt.legend(bbox_to_anchor=(1,1.35), loc="upper right", ncol=2)
+        #plt.legend(, loc='upper left', ncol=1)
     plt.ylim([0.0, 110])
     plt.xlim([0, len(accuracy)])
     plt.ylabel("Accuracy (%)")
@@ -582,17 +585,23 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
     if filename2 is not None:
         plt.hold(True)
         plt.plot(correct2, label="no fusion")
-        plt.legend(loc=5)
+        #plt.legend(loc=5)
     plt.xlim([0, len(accuracy)])
-    plt.ylabel("Correct Classifications")
-    plt.xlabel("Iterations (k)")
+    plt.ylabel("Correct\nClassifications")
 
     if kl:
         plt.subplot(num,1,4)
-        plt.plot([k[0] for k in kl], [k[1] for k in kl])
-        plt.title("K-L Divergence")
+        plt.plot([k[0] for k in kl], [k[1] for k in kl], label="fusion")
+        if filename2 is not None:
+            plt.hold(True)
+            plt.plot([k[0] for k in kl], [k[1] for k in kl2], label="no fusion")
+            #plt.legend(loc=5)
+        plt.ylabel("K-L Divergence")
 
-    plt.tight_layout()
+    plt.xlabel("Iterations (k)")
+
+
+    #plt.tight_layout()
     plt.savefig("zz_results.pdf")
 
 
@@ -664,7 +673,7 @@ def plot_several_pickles(pickles):
     plt.savefig("zz_multiple_results.pdf")
 
 
-def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False):
+def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True):
     """ The "regular" test that is run with this script. 
     
     TODO: What does it do?
@@ -708,7 +717,8 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
             # Append to results vector
             char_result.append(result_class)
             # Fuse into previous knowledge
-            c_models[j].fuse(T)
+            if fusion == True:
+                c_models[j].fuse(T)
         # Mark combination as visited
         visited_combinations[tuple(evidence) + (identity,)] = True
         # Update user representation
@@ -729,9 +739,9 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
                 plot_population(user_characteristics, [2,3], "zz_pop_iter{0:05d}.pdf".format(i))
 
     # Save results to file (raw text and pickle)
-    with open("cenas.txt", "w") as results_file:
-        for item in accuracy:
-            results_file.write("{}\n".format(item))
+    #with open("cenas.txt", "w") as results_file:
+    #    for item in accuracy:
+    #        results_file.write("{}\n".format(item))
 
     with open(pickle_file, "wb") as pickle_file:
         pickle.dump([accuracy, kl], pickle_file)
@@ -783,8 +793,13 @@ if __name__=="__main__":
     #     p = Process(target=iterative_test, args=("many_results/results{0:03d}.pickle".format(i),))
     #     p.start()
     #     p.join()
-    plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
-    #iterative_test()
+    #plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
+    
+    #iterative_test(pickle_file="results_no_fusion.pickle", fusion=False)
+    #iterative_test(pickle_file="results_fusion.pickle")
+    
+    plot_from_file("results_fusion.pickle", "results_no_fusion.pickle", is_pickle=True)
+
     #plot_from_file("cenas.txt")
     #plot_from_file("results.pickle", is_pickle=True)
     #plot_from_file("many_results/results000.pickle", is_pickle=True)
