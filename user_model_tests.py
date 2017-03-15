@@ -364,7 +364,6 @@ def cluster_population(population, evidence, return_gmm=False, num_clusters=2):
     """ Clusters the given population for the given evidence. 
     Returns the raw Gaussian Mixture if requested.
     """
-
     # Retrieve users
     user_vectors = []
     for i in range(NUMBER_OF_USERS):
@@ -403,8 +402,11 @@ def cluster_kl(gmm_p, gmm_q, n_samples=10**5):
 
 
 def plot_population(population, evidence, filename=None):
-    """ This function plots a population of users. """
-
+    """ This function plots a population of users, in the dictionary form
+    defined globally. If a filename is given, the plot is saved on that
+    file.
+    """
+    # Define a range of colors for the users
     colors=["blue", "red", "orange"]
 
     # Retrieve users
@@ -431,9 +433,6 @@ def plot_population(population, evidence, filename=None):
     for i, user in enumerate(user_vectors):
         # Point
         ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i+1))
-        
-    #ax.legend(loc='upper left', numpoints=1, ncol=3, fontsize=8, bbox_to_anchor=(0, 0))
-    #ax.legend(numpoints=1, ncol=3)
     if filename is None:
         plt.show()
     else:
@@ -442,7 +441,8 @@ def plot_population(population, evidence, filename=None):
 
 def plot_population_cluster(means, covariances, filename=None):
     """ Given the result of the E-M algorithm, this function plots the clusters
-    that were determined.
+    that were determined. If a filename is given, the plot is saved on that
+    file.
     """
     colors = [[1, 0, 0, 0.2],
               [0, 1, 0, 0.2],
@@ -455,9 +455,7 @@ def plot_population_cluster(means, covariances, filename=None):
         radii = [x,y,z]
         center = [x,y,z]
         """
-        #coefs = (1, 1, 2)  # Coefficients in a0/c x**2 + a1/c y**2 + a2/c z**2 = 1 
-        # Radii corresponding to the coefficients:
-        #rx, ry, rz = 1/np.sqrt(coefs)
+        # Unpack radii
         rx, ry, rz = radii
 
         # Set of all spherical angles:
@@ -472,7 +470,6 @@ def plot_population_cluster(means, covariances, filename=None):
 
         # Plot:
         axes.plot_surface(x, y, z,  rstride=4, cstride=4, linewidth=0, color=next(color_iter))
-
         ax.set_xlabel("C_1")
         ax.set_ylabel("C_2")
         ax.set_zlabel("C_3")
@@ -482,14 +479,12 @@ def plot_population_cluster(means, covariances, filename=None):
     ax = fig.add_subplot(111, projection='3d')
     ax.view_init(elev=15., azim=45)
 
-
     # Plot clusters
     for mean, cov in zip(means, covariances):
         # Determine axis radii
         v, w = linalg.eigh(cov)
         v = 2. * np.sqrt(2.) * np.sqrt(v)
         u = w[0] / linalg.norm(w[0])
-
         # Plot
         plot_ellipsoid(v, mean, ax)
 
@@ -501,20 +496,21 @@ def plot_population_cluster(means, covariances, filename=None):
     ax.set_ylabel("C_2")
     ax.set_zlabel("C_3")
 
-
-    # Show plot
+    # Show/save plot
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
 
 
-def plot_from_file(filename, filename2=None, is_pickle=False):
+def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_results.pdf"):
     """ Tiny function to plot the data files produced by the iterative tests. 
 
-    If two filenames are given, the accuracies of both are superimposed
+    If two filenames are given, the measurements of both are superimposed.
+    The ability to read from non-pickle files is kept to maintain the ability
+    to plot older data, obtained before implementing pickle support.
     """
-    # Allocate vectors
+    # Define vectors
     accuracy = []
     accuracy2 = []
     count = []
@@ -524,6 +520,8 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
     kl2 = []
 
     # Read from file(s)
+    # Basically, we read the data in the format that it is given to us:
+    # [ [accuracy, count, correct classifications], [iteration, K-L divergence]]
     if is_pickle:
         with open(filename, "rb") as pickle_file:
             temp, kl = pickle.load(pickle_file)
@@ -557,12 +555,14 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
                     correct2.append(float(line[2]))
 
     # Plot stuff
-    # Determine number of subplots
+    # Determine number of subplots from existence of K-L data
     num = 3
     dimensions = (7,8)
     if kl:
         num = 4
+
     # Actually plot
+    # Accuracy
     plt.figure(figsize=dimensions)
     plt.subplot(num,1,1)
     plt.plot([x*100 for x in accuracy], label="fusion")
@@ -570,113 +570,120 @@ def plot_from_file(filename, filename2=None, is_pickle=False):
         plt.hold(True)
         plt.plot([x*100 for x in accuracy2], label="no fusion")
         plt.legend(bbox_to_anchor=(1,1.35), loc="upper right", ncol=2)
-        #plt.legend(, loc='upper left', ncol=1)
     plt.ylim([0.0, 110])
     plt.xlim([0, len(accuracy)])
     plt.ylabel("Accuracy (%)")
-    #plt.title("Accuracy")
+    # Combinations
     plt.subplot(num,1,2)
     plt.plot(count)
     plt.xlim([0, len(accuracy)])
-    #plt.title("Total Combinations Learned")
     plt.ylabel("Combinations")
+    # Correct classifications
     plt.subplot(num,1,3)
     plt.plot(correct, label="fusion")
     if filename2 is not None:
         plt.hold(True)
         plt.plot(correct2, label="no fusion")
-        #plt.legend(loc=5)
     plt.xlim([0, len(accuracy)])
     plt.ylabel("Correct\nClassifications")
-
+    # K-L divergence
     if kl:
         plt.subplot(num,1,4)
         plt.plot([k[0] for k in kl], [k[1] for k in kl], label="fusion")
         if filename2 is not None:
             plt.hold(True)
             plt.plot([k[0] for k in kl], [k[1] for k in kl2], label="no fusion")
-            #plt.legend(loc=5)
         plt.ylabel("K-L Divergence")
-
+    # Add iterations label to final plot
     plt.xlabel("Iterations (k)")
 
-
-    #plt.tight_layout()
-    plt.savefig("zz_results.pdf")
+    # Save the figure
+    plt.savefig(out_file)
 
 
 def plot_several_pickles(pickles):
-    """ Yummy! """
-    accuracy_lists = []
-    count_lists = []
-    correct_lists = []
+    """ Yummy! 
 
-    for i, pickle_file in enumerate(pickles):
-        with open(pickle_file, "rb") as pickle_file:
-            temp, kl = pickle.load(pickle_file)
-            if i == 0:
-                accuracy_lists = [[] for x in range(len(temp))]
-                count_lists = [[] for x in range(len(temp))]
-                correct_lists = [[] for x in range(len(temp))]
-                #print(accuracy_lists)
-            for j, elem in enumerate(temp):
-                accuracy_lists[j].append(elem[0])
-                count_lists[j].append(elem[1])
-                correct_lists[j].append(elem[2])
+    This function is intended to plot the data from n results files.
+    It is in an unimplemented state.
+    """
+    # accuracy_lists = []
+    # count_lists = []
+    # correct_lists = []
 
-    # Plot stuff
-    # Determine number of subplots
-    num = 3
-    # Actually plot
-    plt.subplot(num,1,1)
+    # for i, pickle_file in enumerate(pickles):
+    #     with open(pickle_file, "rb") as pickle_file:
+    #         temp, kl = pickle.load(pickle_file)
+    #         if i == 0:
+    #             accuracy_lists = [[] for x in range(len(temp))]
+    #             count_lists = [[] for x in range(len(temp))]
+    #             correct_lists = [[] for x in range(len(temp))]
+    #             #print(accuracy_lists)
+    #         for j, elem in enumerate(temp):
+    #             accuracy_lists[j].append(elem[0])
+    #             count_lists[j].append(elem[1])
+    #             correct_lists[j].append(elem[2])
+
+    # # Plot stuff
+    # # Determine number of subplots
+    # num = 3
+    # # Actually plot
+    # plt.subplot(num,1,1)
     
-    ax = plt.gca()
-    plt.plot([np.mean(x)*100 for x in accuracy_lists], label="fusion")
-    plt.ylim([0.0, 110])
-    plt.xlim([0, len(accuracy_lists)])
-    plt.ylabel("Accuracy (%)")
-    plt.title("Accuracy")
+    # ax = plt.gca()
+    # plt.plot([np.mean(x)*100 for x in accuracy_lists], label="fusion")
+    # plt.ylim([0.0, 110])
+    # plt.xlim([0, len(accuracy_lists)])
+    # plt.ylabel("Accuracy (%)")
+    # plt.title("Accuracy")
 
-    # Add variation rectangle
-    plt.hold(True)
-    # Maximum and minimum vectors
-    maxs = [max(x)*100 for x in accuracy_lists]
-    mins = [min(x)*100 for x in accuracy_lists]
-    # Determine points (polygons are drawn clockwise)
-    points = []
-    for i in range(len(maxs)):
-        points.append([i, maxs[i]])
-    for i in range(len(mins)-1, -1, -1):
-        points.append([i, mins[i]])
-    # Create patch
-    patches = []
-    polygon = mpatches.Polygon(points)
-    patches.append(polygon)
-    # Add patch to axis
-    colors = np.linspace(0, 1, len(patches))
-    collection = PatchCollection(patches, cmap=plt.cm.hsv, alpha=0.3)
-    collection.set_array(np.array(colors))
-    ax.add_collection(collection)
+    # # Add variation rectangle
+    # plt.hold(True)
+    # # Maximum and minimum vectors
+    # maxs = [max(x)*100 for x in accuracy_lists]
+    # mins = [min(x)*100 for x in accuracy_lists]
+    # # Determine points (polygons are drawn clockwise)
+    # points = []
+    # for i in range(len(maxs)):
+    #     points.append([i, maxs[i]])
+    # for i in range(len(mins)-1, -1, -1):
+    #     points.append([i, mins[i]])
+    # # Create patch
+    # patches = []
+    # polygon = mpatches.Polygon(points)
+    # patches.append(polygon)
+    # # Add patch to axis
+    # colors = np.linspace(0, 1, len(patches))
+    # collection = PatchCollection(patches, cmap=plt.cm.hsv, alpha=0.3)
+    # collection.set_array(np.array(colors))
+    # ax.add_collection(collection)
 
-    plt.subplot(num,1,2)
-    plt.plot([x[0] for x in count_lists])
-    plt.xlim([0, len(accuracy_lists)])
-    #plt.title("Total Combinations Learned")
-    plt.ylabel("Combinations")
-    plt.subplot(num,1,3)
-    plt.plot([x[0] for x in correct_lists])
-    plt.xlim([0, len(accuracy_lists)])
-    plt.ylabel("Correct Classifications")
-    plt.xlabel("Iterations (k)")
+    # plt.subplot(num,1,2)
+    # plt.plot([x[0] for x in count_lists])
+    # plt.xlim([0, len(accuracy_lists)])
+    # #plt.title("Total Combinations Learned")
+    # plt.ylabel("Combinations")
+    # plt.subplot(num,1,3)
+    # plt.plot([x[0] for x in correct_lists])
+    # plt.xlim([0, len(accuracy_lists)])
+    # plt.ylabel("Correct Classifications")
+    # plt.xlabel("Iterations (k)")
 
-    plt.tight_layout()
-    plt.savefig("zz_multiple_results.pdf")
+    # plt.tight_layout()
+    # plt.savefig("zz_multiple_results.pdf")
+    pass
 
 
 def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True):
     """ The "regular" test that is run with this script. 
     
-    TODO: What does it do?
+    This function iterates the model for a set number of iterations.
+
+    Inputs:
+    pickle_file: the filename to which results are written
+    clustering: whether to perform clustering
+    plot_clusters: whether to plot the clusters
+    fusion: whether to use fusion
     """
     # Initialize population simulator
     profiles = dict()
@@ -684,45 +691,50 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     num_clusters = len(profiles[(2,3)])
     population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
 
-    # Reset population
+    # Reset population back to uniform
     reset_population()
 
-    # Define models
+    # Define characteristics models
     c_models = []
     for i in range(len(CHARACTERISTICS_STRUCTURE)):
         c_models.append(characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[i], NUMBER_OF_USERS))
 
-    # List to maintain the accuracy of the system
+    # Lists to maintain the accuracy and K-L divergence (results)
+    # Accuracy is actually more than simple accuracy, as defined in 
+    # calculate_accuracy()
     accuracy = []
-
-    # List to maintain the K-L divergence to the original clusters
     kl = []
 
     # Run
     for i in range(NUMBER_OF_ITERATIONS):
-        # Inform
+        # Inform on current iteration
         os.system('clear')
         print("I'm going to save results in {}.".format(pickle_file))
         print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
         identity = evidence.pop()
         char_result = []
+
+        # Run main cycle for each model
         for j in range(len(c_models)):
             # Instantiate
             result_class, entropy = c_models[j].instantiate(evidence, identity)
             # Generate labels
             T = generate_label(result_class, entropy, evidence, identity, characteristics[j])
-            #T = generate_label(characteristics[j], entropy, evidence, identity, characteristics[j])
             # Append to results vector
             char_result.append(result_class)
             # Fuse into previous knowledge
             if fusion == True:
                 c_models[j].fuse(T)
+
         # Mark combination as visited
         visited_combinations[tuple(evidence) + (identity,)] = True
+
         # Update user representation
         user_characteristics[tuple(evidence) + (identity,)] = copy.copy(char_result)
+
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
@@ -738,11 +750,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
                 # Plot population
                 plot_population(user_characteristics, [2,3], "zz_pop_iter{0:05d}.pdf".format(i))
 
-    # Save results to file (raw text and pickle)
-    #with open("cenas.txt", "w") as results_file:
-    #    for item in accuracy:
-    #        results_file.write("{}\n".format(item))
-
+    # Save results to file
     with open(pickle_file, "wb") as pickle_file:
         pickle.dump([accuracy, kl], pickle_file)
 
@@ -757,6 +765,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
 
 def reset_population():
+    """ This function resets the global population back to uniformity. """
     # Initialize population
     # Build the ranges for all evidence and create an iterator
     a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
@@ -769,11 +778,13 @@ def reset_population():
 
 
 def debug():
-    profiles = dict()
-    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
-    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
-    plot_population(population.get_users(), [2,3])
-    #print(cluster_kl(clusters1, clusters2))
+    """ A simple debug function used occasionally to test stuff. """
+    # profiles = dict()
+    # profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
+    # population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    # plot_population(population.get_users(), [2,3])
+    # print(cluster_kl(clusters1, clusters2))
+    pass
 
 
 if __name__=="__main__":
@@ -783,27 +794,20 @@ if __name__=="__main__":
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['axes.ymargin'] = 0.1
 
-    #
-    #reset_population()
-    
-
-
-    # Run tests
-    # for i in range(26):
-    #     p = Process(target=iterative_test, args=("many_results/results{0:03d}.pickle".format(i),))
-    #     p.start()
-    #     p.join()
-    #plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
-    
+    # Generate main results figure
     #iterative_test(pickle_file="results_no_fusion.pickle", fusion=False)
     #iterative_test(pickle_file="results_fusion.pickle")
-    
-    plot_from_file("results_fusion.pickle", "results_no_fusion.pickle", is_pickle=True)
+    #plot_from_file("results_fusion.pickle", "results_no_fusion.pickle", is_pickle=True)
 
-    #plot_from_file("cenas.txt")
-    #plot_from_file("results.pickle", is_pickle=True)
-    #plot_from_file("many_results/results000.pickle", is_pickle=True)
+    # Generate the clusters figure
+    #iterative_test(clustering=True, plot_clusters=True)
+
+    # Run many tests
+    #for i in range(26):
+    #    p = Process(target=iterative_test, args=("many_results/results{0:03d}.pickle".format(i),))
+    #    p.start()
+    #    p.join()
+    #plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
+
+    # Run the debug function
     #debug()
-
-    # Generate one of the paper figures
-    #plot_from_file("/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space.txt", "/home/vsantos/Desktop/user_model/figs/acc_count_15000_2evidence_10space_nofuse.txt")
