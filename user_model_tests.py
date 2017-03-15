@@ -49,7 +49,7 @@ import probt
 NUMBER_OF_USERS = 30
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [4, 4] 
+EVIDENCE_STRUCTURE = [4, 4]
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
@@ -674,7 +674,7 @@ def plot_several_pickles(pickles):
     pass
 
 
-def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True):
+def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True, epsilon=None):
     """ The "regular" test that is run with this script. 
     
     This function iterates the model for a set number of iterations.
@@ -684,12 +684,17 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     clustering: whether to perform clustering
     plot_clusters: whether to plot the clusters
     fusion: whether to use fusion
+    epsilon: if defined, it is used as the convergence coefficient. 
+    The system then runs only until the improvement in accuracy drops below
+    this value.
     """
     # Initialize population simulator
     profiles = dict()
-    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
-    num_clusters = len(profiles[(2,3)])
-    population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    #profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
+    profile_evidence = [1]*len(EVIDENCE_STRUCTURE)
+    profiles[tuple(profile_evidence)] = [[2,2,2], [3,3,3]]
+    num_clusters = len(profiles[tuple(profile_evidence)])
+    population = population_simulator(number_of_users=NUMBER_OF_USERS, evidence_structure=EVIDENCE_STRUCTURE, characteristics_structure=CHARACTERISTICS_STRUCTURE, profiles=profiles)
 
     # Reset population back to uniform
     reset_population()
@@ -741,14 +746,25 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         # If i is in a certain value, we calculate the clusters
         if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/20)) and clustering == True:
             # Cluster population
-            clusters = cluster_population(user_characteristics, [2,3], return_gmm=True, num_clusters=num_clusters)
+            clusters = cluster_population(user_characteristics, profile_evidence, return_gmm=True, num_clusters=num_clusters)
             # Calculate divergence to reference population
-            kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), [2,3], return_gmm=True)[2])])
+            kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), profile_evidence, return_gmm=True)[2])])
             if plot_clusters == True:
                 # Plot
                 plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{0:05d}.pdf".format(i))
                 # Plot population
-                plot_population(user_characteristics, [2,3], "zz_pop_iter{0:05d}.pdf".format(i))
+                plot_population(user_characteristics, profile_evidence, "zz_pop_iter{0:05d}.pdf".format(i))
+
+        # Stop iterating if we reached the accuracy goal
+        history_length = 100
+        if (len(accuracy) > history_length):
+            #cenas = np.absolute(sum(np.diff([accuracy[-i][0] for i in range(history_length,0, -1)])))
+            cenas = [accuracy[-i][0] for i in range(history_length,0, -1)]
+            cenas = max(cenas) - min(cenas)
+            if cenas < epsilon:
+                print("Stopping iterations at {} with coeff {}.".format(i, cenas))
+                break
+
 
     # Save results to file
     with open(pickle_file, "wb") as pickle_file:
@@ -756,11 +772,11 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
     # Plot some clusters
     if plot_clusters == True:
-        plot_population(population.get_users(), [2,3], "zz_original_pop.pdf")
-        plot_population(user_characteristics, [2,3], "zz_result_pop.pdf")
-        clusters = cluster_population(population.get_users(), [2,3], num_clusters=num_clusters)
+        plot_population(population.get_users(), profile_evidence, "zz_original_pop.pdf")
+        plot_population(user_characteristics, profile_evidence, "zz_result_pop.pdf")
+        clusters = cluster_population(population.get_users(), profile_evidence, num_clusters=num_clusters)
         plot_population_cluster(*clusters, filename="zz_original_clusters.pdf")
-        clusters = cluster_population(user_characteristics, [2,3], num_clusters=num_clusters)
+        clusters = cluster_population(user_characteristics, profile_evidence, num_clusters=num_clusters)
         plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
 
 
@@ -808,6 +824,10 @@ if __name__=="__main__":
     #    p.start()
     #    p.join()
     #plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
+
+    # Run until convergence
+    iterative_test(epsilon=0.005, pickle_file="conv.pickle")
+    plot_from_file("conv.pickle", is_pickle=True)
 
     # Run the debug function
     #debug()
