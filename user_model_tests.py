@@ -46,10 +46,10 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 30
+NUMBER_OF_USERS = 40
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [4, 4]
+EVIDENCE_STRUCTURE = [3, 3]
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
@@ -423,9 +423,9 @@ def plot_population(population, evidence, filename=None):
     ax.set_xlim([0,10])
     ax.set_ylim([0,10])
     ax.set_zlim([0,10])
-    ax.set_xlabel("C_1")
-    ax.set_ylabel("C_2")
-    ax.set_zlabel("C_3")
+    ax.set_xlabel("$C_1$ [classes]")
+    ax.set_ylabel("$C_2$ [classes]")
+    ax.set_zlabel("$C_3$ [classes]")
     ax.view_init(elev=15., azim=45)
 
     # Plot/Save
@@ -437,6 +437,7 @@ def plot_population(population, evidence, filename=None):
         plt.show()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_population_cluster(means, covariances, filename=None):
@@ -459,8 +460,8 @@ def plot_population_cluster(means, covariances, filename=None):
         rx, ry, rz = radii
 
         # Set of all spherical angles:
-        u = np.linspace(0, 2 * np.pi, 100)
-        v = np.linspace(0, np.pi, 100)
+        u = np.linspace(0, 2 * np.pi, 50)
+        v = np.linspace(0, np.pi, 50)
 
         # Cartesian coordinates that correspond to the spherical angles:
         # (this is the equation of an ellipsoid):
@@ -470,9 +471,9 @@ def plot_population_cluster(means, covariances, filename=None):
 
         # Plot:
         axes.plot_surface(x, y, z,  rstride=4, cstride=4, linewidth=0, color=next(color_iter))
-        ax.set_xlabel("C_1")
-        ax.set_ylabel("C_2")
-        ax.set_zlabel("C_3")
+        #ax.set_xlabel("C_1")
+        #ax.set_ylabel("C_2")
+        #ax.set_zlabel("C_3")
 
     # Create figure
     fig = plt.figure()  # Square figure
@@ -492,15 +493,16 @@ def plot_population_cluster(means, covariances, filename=None):
     ax.set_xlim([0, 10])
     ax.set_ylim([0, 10])
     ax.set_zlim([0, 10])
-    ax.set_xlabel("C_1")
-    ax.set_ylabel("C_2")
-    ax.set_zlabel("C_3")
+    ax.set_xlabel(r"$C_1$ [classes]")
+    ax.set_ylabel(r"$C_2$ [classes]")
+    ax.set_zlabel(r"$C_3$ [classes]")
 
     # Show/save plot
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_results.pdf"):
@@ -568,7 +570,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_resul
     plt.plot([x*100 for x in accuracy], label="fusion")
     if filename2 is not None:
         plt.hold(True)
-        plt.plot([x*100 for x in accuracy2], label="no fusion")
+        plt.plot([x*100 for x in accuracy2], '--', label="no fusion")
         plt.legend(bbox_to_anchor=(1,1.35), loc="upper right", ncol=2)
     plt.ylim([0.0, 110])
     plt.xlim([0, len(accuracy)])
@@ -583,7 +585,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_resul
     plt.plot(correct, label="fusion")
     if filename2 is not None:
         plt.hold(True)
-        plt.plot(correct2, label="no fusion")
+        plt.plot(correct2, '--', label="no fusion")
     plt.xlim([0, len(accuracy)])
     plt.ylabel("Correct\nClassifications")
     # K-L divergence
@@ -592,7 +594,7 @@ def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_resul
         plt.plot([k[0] for k in kl], [k[1] for k in kl], label="fusion")
         if filename2 is not None:
             plt.hold(True)
-            plt.plot([k[0] for k in kl], [k[1] for k in kl2], label="no fusion")
+            plt.plot([k[0] for k in kl], [k[1] for k in kl2], '--', label="no fusion")
         plt.ylabel("K-L Divergence")
     # Add iterations label to final plot
     plt.xlabel("Iterations (k)")
@@ -690,9 +692,10 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     """
     # Initialize population simulator
     profiles = dict()
-    #profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
-    profile_evidence = [1]*len(EVIDENCE_STRUCTURE)
-    profiles[tuple(profile_evidence)] = [[2,2,2], [3,3,3]]
+    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
+    #profile_evidence = [1]*len(EVIDENCE_STRUCTURE)
+    profile_evidence = [2,3]
+    #profiles[tuple(profile_evidence)] = [[2,2], [3,3]]
     num_clusters = len(profiles[tuple(profile_evidence)])
     population = population_simulator(number_of_users=NUMBER_OF_USERS, evidence_structure=EVIDENCE_STRUCTURE, characteristics_structure=CHARACTERISTICS_STRUCTURE, profiles=profiles)
 
@@ -709,6 +712,11 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     # calculate_accuracy()
     accuracy = []
     kl = []
+    cluster_record = []
+
+    final_iteration = 0
+
+    init = time.time()
 
     # Run
     for i in range(NUMBER_OF_ITERATIONS):
@@ -716,6 +724,8 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         os.system('clear')
         print("I'm going to save results in {}.".format(pickle_file))
         print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        if i > 0:
+            print("Previous accuracy: {}.".format(accuracy[-1][0]))
         
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
@@ -747,6 +757,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/20)) and clustering == True:
             # Cluster population
             clusters = cluster_population(user_characteristics, profile_evidence, return_gmm=True, num_clusters=num_clusters)
+            #cluster_record.append([clusters[0], clusters[1], i])
             # Calculate divergence to reference population
             kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), profile_evidence, return_gmm=True)[2])])
             if plot_clusters == True:
@@ -757,14 +768,39 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
         # Stop iterating if we reached the accuracy goal
         history_length = 100
-        if (len(accuracy) > history_length):
+        if epsilon is not None and (len(accuracy) > history_length):
             #cenas = np.absolute(sum(np.diff([accuracy[-i][0] for i in range(history_length,0, -1)])))
             cenas = [accuracy[-i][0] for i in range(history_length,0, -1)]
             cenas = max(cenas) - min(cenas)
             if cenas < epsilon:
-                print("Stopping iterations at {} with coeff {}.".format(i, cenas))
+                final_iteration = i
                 break
 
+    # Inform
+    os.system("clear")
+    print("End of test results:")
+    print("The system took {} iterations to converge.".format(final_iteration))
+    print("The final accuracy is {}.".format(accuracy[-1][0]))
+    print("Execution time was {} seconds.".format(time.time()-init))
+    print("Evidence structure is {}.".format(EVIDENCE_STRUCTURE))
+    print("Characteristics structure is {}.".format(CHARACTERISTICS_STRUCTURE))
+    print("Number of users is {}.".format(NUMBER_OF_USERS))
+
+    # Save results to table
+    with open("table.tex", "a") as table_file:
+        # $\mathbf{E}$ & $\mathbf{C}$ & $n$ & Conv. Time & Final Acc & Execution Time \\
+        table_file.write(", ".join([str(elem) for elem in EVIDENCE_STRUCTURE]))
+        table_file.write(" & ")
+        table_file.write(", ".join([str(elem) for elem in CHARACTERISTICS_STRUCTURE]))
+        table_file.write(" & ")
+        table_file.write("{}".format(NUMBER_OF_USERS))
+        table_file.write(" & ")
+        table_file.write("{}".format(final_iteration))
+        table_file.write(" & ")
+        table_file.write("{:03.4f}".format(accuracy[-1][0]*100))
+        table_file.write(" & ")
+        table_file.write("{:03.4f}".format(time.time()-init))
+        table_file.write(" \\\\\n")
 
     # Save results to file
     with open(pickle_file, "wb") as pickle_file:
@@ -807,16 +843,18 @@ if __name__=="__main__":
     # Configure Matplotlib
     mpl.rcParams['ps.useafm'] = True
     #mpl.rcParams['pdf.use14corefonts'] = True
+    mpl.rcParams['text.usetex'] = True
+    #mpl.rcParams['text.latex.unicode']=False
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['axes.ymargin'] = 0.1
 
     # Generate main results figure
     #iterative_test(pickle_file="results_no_fusion.pickle", fusion=False)
     #iterative_test(pickle_file="results_fusion.pickle")
-    #plot_from_file("results_fusion.pickle", "results_no_fusion.pickle", is_pickle=True)
+    #plot_from_file("in_paper/results_fusion.pickle", "in_paper/results_no_fusion.pickle", is_pickle=True)
 
     # Generate the clusters figure
-    #iterative_test(clustering=True, plot_clusters=True)
+    iterative_test(clustering=True, plot_clusters=True)
 
     # Run many tests
     #for i in range(26):
@@ -826,8 +864,8 @@ if __name__=="__main__":
     #plot_several_pickles(["many_results/results{0:03d}.pickle".format(i) for i in range(3)])
 
     # Run until convergence
-    iterative_test(epsilon=0.005, pickle_file="conv.pickle")
-    plot_from_file("conv.pickle", is_pickle=True)
+    #iterative_test(epsilon=0.005, pickle_file="conv.pickle")
+    #plot_from_file("conv.pickle", is_pickle=True)
 
     # Run the debug function
     #debug()
