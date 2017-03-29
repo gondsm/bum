@@ -3,6 +3,10 @@
 the paper.
 
 T vector = [L (chosen label), E (evidence), h (entropy)]
+
+Commands for creating the videos:
+avconv -framerate 10 -f image2 -i zz_clusters_%05d.png -c:v h264 -crf 1 out.mp4
+avconv -framerate 10 -f image2 -i zz_pop_%05d.png -c:v h264 -crf 1 out.mp4
 """
 
 # Futures
@@ -54,7 +58,7 @@ EVIDENCE_STRUCTURE = [3, 3]
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 5000
+NUMBER_OF_ITERATIONS = 3000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -401,7 +405,7 @@ def cluster_kl(gmm_p, gmm_q, n_samples=10**5):
     return log_p_X.mean() - log_q_X.mean()
 
 
-def plot_population(population, evidence, filename=None):
+def plot_population(population, evidence, filename=None, title=None):
     """ This function plots a population of users, in the dictionary form
     defined globally. If a filename is given, the plot is saved on that
     file.
@@ -427,6 +431,8 @@ def plot_population(population, evidence, filename=None):
     ax.set_ylabel("$C_2$ [classes]")
     ax.set_zlabel("$C_3$ [classes]")
     ax.view_init(elev=15., azim=45)
+    if title is not None:
+        plt.title(title)
 
     # Plot/Save
     plt.hold(True)
@@ -440,7 +446,7 @@ def plot_population(population, evidence, filename=None):
     plt.close()
 
 
-def plot_population_cluster(means, covariances, filename=None):
+def plot_population_cluster(means, covariances, filename=None, title=None):
     """ Given the result of the E-M algorithm, this function plots the clusters
     that were determined. If a filename is given, the plot is saved on that
     file.
@@ -496,6 +502,8 @@ def plot_population_cluster(means, covariances, filename=None):
     ax.set_xlabel(r"$C_1$ [classes]")
     ax.set_ylabel(r"$C_2$ [classes]")
     ax.set_zlabel(r"$C_3$ [classes]")
+    if title is not None:
+        plt.title(title)
 
     # Show/save plot
     if filename is None:
@@ -676,7 +684,7 @@ def plot_several_pickles(pickles):
     pass
 
 
-def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True, epsilon=None):
+def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True, epsilon=None, for_video=False):
     """ The "regular" test that is run with this script. 
     
     This function iterates the model for a set number of iterations.
@@ -687,6 +695,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     plot_clusters: whether to plot the clusters
     fusion: whether to use fusion
     epsilon: if defined, it is used as the convergence coefficient. 
+    for_video: if true, plots are printed as png and numbered sequentially
     The system then runs only until the improvement in accuracy drops below
     this value.
     """
@@ -715,6 +724,8 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     cluster_record = []
 
     final_iteration = 0
+
+    frame_count = 0
 
     init = time.time()
 
@@ -754,7 +765,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
 
         # If i is in a certain value, we calculate the clusters
-        if i in range(0, NUMBER_OF_ITERATIONS, int(NUMBER_OF_ITERATIONS/20)) and clustering == True:
+        if i in range(0, NUMBER_OF_ITERATIONS, 10) and clustering == True:
             # Cluster population
             clusters = cluster_population(user_characteristics, profile_evidence, return_gmm=True, num_clusters=num_clusters)
             #cluster_record.append([clusters[0], clusters[1], i])
@@ -762,9 +773,14 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
             kl.append([i, cluster_kl(clusters[2], cluster_population(population.get_users(), profile_evidence, return_gmm=True)[2])])
             if plot_clusters == True:
                 # Plot
-                plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{0:05d}.pdf".format(i))
-                # Plot population
-                plot_population(user_characteristics, profile_evidence, "zz_pop_iter{0:05d}.pdf".format(i))
+                if for_video is True:
+                    plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_{0:05d}.png".format(frame_count), title="Iteration {}".format(i))
+                    plot_population(user_characteristics, profile_evidence, "zz_pop_{0:05d}.png".format(frame_count), title="Iteration {}".format(i))
+                    frame_count += 1
+                else:
+                    plot_population_cluster(clusters[0], clusters[1], filename="zz_clusters_iter{0:05d}.pdf".format(i))
+                    # Plot population
+                    plot_population(user_characteristics, profile_evidence, "zz_pop_iter{0:05d}.pdf".format(i))
 
         # Stop iterating if we reached the accuracy goal
         history_length = 100
