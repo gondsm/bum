@@ -184,6 +184,16 @@ class characteristic_model:
         self._P_E_given_C_1.push(values, dist)
 
 
+    def get_likelihood(self):
+        """ Gets the likelihood of the model, so that it can be transmitted
+        elsewhere and used by other models."""
+        return self._P_E_given_C_1.tabulate()
+
+    def set_likelihood(self, likelihood):
+        """ Sets the likelihood of the system to that obtained by another
+        model."""
+        self._P_E_given_C_1.replace(self._C_1, self._input_variables, likelihood)
+
     def plot(self, label, evidence, identity):
         """ Plots the likelihood for the given evidence vector, identity label. """
         # Initialize plValues
@@ -364,6 +374,31 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
+def calculate_estimation_error(learned_dict, reference_dict):
+    """ This function calculates the estimation error given the learned
+    characteristics of the user.
+    """
+    # Initialize error
+    error = 0
+    correct = 0
+    count = 0
+
+    # Determine the number of visited combinations
+    count = len(visited_combinations.items())
+
+    # Go through all combinations
+    for key, val in learned_dict.items():
+        # Compare results for each characteristic
+        for i in range(len(val)):
+            if val[i] == reference_dict[key][i]:
+                correct += 1/len(val)
+            else:
+                error += abs(val[i] - reference_dict[key][i])
+
+    # And return a new list
+    return [error, count, correct]
+
+
 def cluster_population(population, evidence, return_gmm=False, num_clusters=2):
     """ Clusters the given population for the given evidence. 
     Returns the raw Gaussian Mixture if requested.
@@ -513,13 +548,22 @@ def plot_population_cluster(means, covariances, filename=None, title=None):
     plt.close()
 
 
-def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_results.pdf"):
+def plot_from_file(filename, filename2=None, is_pickle=True, out_file="zz_results.pdf"):
     """ Tiny function to plot the data files produced by the iterative tests. 
 
     If two filenames are given, the measurements of both are superimposed.
     The ability to read from non-pickle files is kept to maintain the ability
     to plot older data, obtained before implementing pickle support.
     """
+    def plot_kl(iters, kl):
+        """ Plots just the K-L Divergence """
+        plt.figure(figsize=[12,2])
+        plt.ylabel("K-L Divergence")
+        plt.xlabel("Iterations (k)")
+        plt.plot(iters, kl)
+        plt.tight_layout()
+        plt.savefig("zz_kl.pdf")
+
     # Define vectors
     accuracy = []
     accuracy2 = []
@@ -528,23 +572,29 @@ def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_resul
     correct2 = []
     kl = []
     kl2 = []
+    error = []
+    error2 = []
 
     # Read from file(s)
     # Basically, we read the data in the format that it is given to us:
-    # [ [accuracy, count, correct classifications], [iteration, K-L divergence]]
+    # [ [accuracy, count, correct classifications], [iteration, K-L divergence], [error, count, correct classifications]]
     if is_pickle:
         with open(filename, "rb") as pickle_file:
-            temp, kl = pickle.load(pickle_file)
+            temp, kl, temp_err = pickle.load(pickle_file)
             for elem in temp:
                 accuracy.append(elem[0])
                 count.append(elem[1])
                 correct.append(elem[2])
+            for elem in temp_err: 
+                error.append(elem[0])
         if filename2 is not None:
             with open(filename2, "rb") as pickle_file:
-                temp, kl2 = pickle.load(pickle_file)
+                temp, kl2, temp_err = pickle.load(pickle_file)
                 for elem in temp:
                     accuracy2.append(elem[0])
                     correct2.append(elem[2])
+                for elem in temp_err:
+                    error2.append(elem[0])
     else:
         with open(filename) as results_file:
             for line in results_file:
@@ -566,44 +616,73 @@ def plot_from_file(filename, filename2=None, is_pickle=False, out_file="zz_resul
 
     # Plot stuff
     # Determine number of subplots from existence of K-L data
-    num = 3
-    dimensions = (7,8)
-    if kl:
-        num = 4
+    # num = 3
+    # dimensions = (7,8)
+    # if kl:
+    #     num = 4
 
     # Actually plot
     # Accuracy
+    # plt.figure(figsize=dimensions)
+    # plt.subplot(num,1,1)
+    # plt.plot([x*100 for x in accuracy], label="fusion")
+    # if filename2 is not None:
+    #     plt.hold(True)
+    #     plt.plot([x*100 for x in accuracy], '--', label="no fusion")
+    #     plt.legend(bbox_to_anchor=(1,1.35), loc="upper right", ncol=2)
+    # plt.ylim([0.0, 110])
+    # plt.xlim([0, len(accuracy)])
+    # plt.ylabel("Accuracy (%)")
+    # # Combinations
+    # plt.subplot(num,1,2)
+    # plt.plot(count)
+    # plt.xlim([0, len(accuracy)])
+    # plt.ylabel("Combinations")
+    # # Correct classifications
+    # plt.subplot(num,1,3)
+    # plt.plot(correct, label="fusion")
+    # if filename2 is not None:
+    #     plt.hold(True)
+    #     plt.plot(correct2, '--', label="no fusion")
+    # plt.xlim([0, len(accuracy)])
+    # plt.ylabel("Correct\nClassifications")
+    # # K-L divergence
+    # if kl:
+    #     plt.subplot(num,1,4)
+    #     plt.plot([k[0] for k in kl], [k[1] for k in kl], label="fusion")
+    #     if filename2 is not None:
+    #         plt.hold(True)
+    #         plt.plot([k[0] for k in kl], [k[1] for k in kl2], '--', label="no fusion")
+    #     plt.ylabel("K-L Divergence")
+    # # Add iterations label to final plot
+    # plt.xlabel("Iterations (k)")
+
+    
+    # Plot K-L Divergence
+    #plot_kl([k[0] for k in kl], [k[1] for k in kl])
+
+    # Actually plot
+    dimensions = (7,5)
+    # Accuracy
     plt.figure(figsize=dimensions)
-    plt.subplot(num,1,1)
-    plt.plot([x*100 for x in accuracy], label="fusion")
-    if filename2 is not None:
-        plt.hold(True)
-        plt.plot([x*100 for x in accuracy2], '--', label="no fusion")
-        plt.legend(bbox_to_anchor=(1,1.35), loc="upper right", ncol=2)
-    plt.ylim([0.0, 110])
+    plt.subplot(2,1,1)
+    plt.plot(error)
+    plt.ylim([0.0, 1.1*max(error)])
     plt.xlim([0, len(accuracy)])
-    plt.ylabel("Accuracy (%)")
+    plt.ylabel("Total Error")
     # Combinations
-    plt.subplot(num,1,2)
-    plt.plot(count)
+    plt.subplot(2,1,2)
     plt.xlim([0, len(accuracy)])
-    plt.ylabel("Combinations")
+    plt.ylabel("Visited Combinations (n)")
     # Correct classifications
-    plt.subplot(num,1,3)
-    plt.plot(correct, label="fusion")
-    if filename2 is not None:
-        plt.hold(True)
-        plt.plot(correct2, '--', label="no fusion")
-    plt.xlim([0, len(accuracy)])
-    plt.ylabel("Correct\nClassifications")
-    # K-L divergence
-    if kl:
-        plt.subplot(num,1,4)
-        plt.plot([k[0] for k in kl], [k[1] for k in kl], label="fusion")
-        if filename2 is not None:
-            plt.hold(True)
-            plt.plot([k[0] for k in kl], [k[1] for k in kl2], '--', label="no fusion")
-        plt.ylabel("K-L Divergence")
+    plt.plot(count, label="Visited combinations")
+    #plt.hold(True)
+    #plt.plot(correct, '--', label="Correct classifications")
+    #plt.xlim([0, len(accuracy)])
+    #plt.ylabel("Correct\nClassifications")
+
+    #plt.legend(loc="lower right", ncol=1)
+
     # Add iterations label to final plot
     plt.xlabel("Iterations (k)")
 
@@ -628,7 +707,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     """
     # Initialize population simulator
     profiles = dict()
-    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4], [2,2,8]]
+    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4]]
     #profile_evidence = [1]*len(EVIDENCE_STRUCTURE)
     profile_evidence = [2,3]
     #profiles[tuple(profile_evidence)] = [[2,2], [3,3]]
@@ -649,6 +728,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     accuracy = []
     kl = []
     cluster_record = []
+    error = []
 
     final_iteration = 0
 
@@ -664,6 +744,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
         if i > 0:
             print("Previous accuracy: {}.".format(accuracy[-1][0]))
+            print("Previous total error: {}".format(error[-1][0]))
         
         # Generate evidence and characteristics
         evidence, characteristics = population.generate()
@@ -690,6 +771,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
         # Calculate accuracy
         accuracy.append(calculate_accuracy(user_characteristics, population.get_users()))
+        error.append(calculate_estimation_error(user_characteristics, population.get_users()))
 
         # If i is in a certain value, we calculate the clusters
         if i in range(0, NUMBER_OF_ITERATIONS, 10) and clustering == True:
@@ -747,7 +829,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
     # Save results to file
     with open(pickle_file, "wb") as pickle_file:
-        pickle.dump([accuracy, kl], pickle_file)
+        pickle.dump([accuracy, kl, error], pickle_file)
 
     # Plot some clusters
     if plot_clusters == True:
@@ -779,7 +861,12 @@ def debug():
     # population = population_simulator(NUMBER_OF_USERS, EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE, profiles=profiles)
     # plot_population(population.get_users(), [2,3])
     # print(cluster_kl(clusters1, clusters2))
-    pass
+
+    c = characteristic_model([3,3,3], 10, 30)
+    likelihood = c.get_likelihood()
+    print(likelihood)
+
+    #pass
 
 
 if __name__=="__main__":
@@ -797,7 +884,7 @@ if __name__=="__main__":
     #plot_from_file("in_paper/results_fusion.pickle", "in_paper/results_no_fusion.pickle", is_pickle=True)
 
     # Generate the clusters figure
-    iterative_test(clustering=True, plot_clusters=True)
+    #iterative_test(clustering=True, plot_clusters=True)
 
     # Run many tests
     #for i in range(26):
@@ -812,3 +899,8 @@ if __name__=="__main__":
 
     # Run the debug function
     #debug()
+
+
+    # Other stuff
+    #iterative_test(pickle_file="results.pickle")
+    plot_from_file("results.pickle", is_pickle=True)
