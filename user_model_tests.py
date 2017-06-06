@@ -50,7 +50,7 @@ import probt
 # These are global constant variables that guide the instantiation of the
 # various objects.
 # How many users we'll simulate:
-NUMBER_OF_USERS = 40
+NUMBER_OF_USERS = 60
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
 EVIDENCE_STRUCTURE = [3, 3]
@@ -58,7 +58,7 @@ EVIDENCE_STRUCTURE = [3, 3]
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
 # How many iterations the system will run for:
-NUMBER_OF_ITERATIONS = 3000
+NUMBER_OF_ITERATIONS = 1000
 
 # This *dictionary* will maintain the characteristics of the users.
 # It is indexed by the tuple (tuple(evidence) + tuple(identity)), and
@@ -313,7 +313,7 @@ class population_simulator:
         return self._users
 
 
-def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
+def generate_label(soft_label, entropy, evidence, identity, hard_label=None, combinations=visited_combinations):
     """ This function receives the soft_label and entropy and the current
     evidence, and optionally a hard label.
     If the classification and hard label do not match up, the 
@@ -339,7 +339,7 @@ def generate_label(soft_label, entropy, evidence, identity, hard_label=None):
 
     try:
         # If the value was initialized:
-        visited_combinations[tuple(T[1] + [T[2]])]
+        combinations[tuple(T[1] + [T[2]])]
     except KeyError:
         # Define T vector with hard evidence, if possible
         if hard_label is not None:
@@ -374,9 +374,11 @@ def calculate_accuracy(learned_dict, reference_dict):
     return [accuracy, count, correct]
 
 
-def calculate_estimation_error(learned_dict, reference_dict):
+def calculate_estimation_error(learned_dict, reference_dict, combinations=visited_combinations, evidence=None):
     """ This function calculates the estimation error given the learned
     characteristics of the user.
+
+    If evidence is received, error is calculated only for that evidence
     """
     # Initialize error
     error = 0
@@ -384,16 +386,22 @@ def calculate_estimation_error(learned_dict, reference_dict):
     count = 0
 
     # Determine the number of visited combinations
-    count = len(visited_combinations.items())
+    count = len(combinations.items())
 
     # Go through all combinations
     for key, val in learned_dict.items():
         # Compare results for each characteristic
-        for i in range(len(val)):
-            if val[i] == reference_dict[key][i]:
-                correct += 1/len(val)
-            else:
+        if evidence is None:
+            for i in range(len(val)):
+                if val[i] == reference_dict[key][i]:
+                    correct += 1/len(val)
+                else:
+                    error += abs(val[i] - reference_dict[key][i])
+        elif key[0:-1] == tuple(evidence):
+            for i in range(len(val)):
+                # If we are in a desired tuple
                 error += abs(val[i] - reference_dict[key][i])
+
 
     # And return a new list
     return [error, count, correct]
@@ -548,7 +556,7 @@ def plot_population_cluster(means, covariances, filename=None, title=None):
     plt.close()
 
 
-def plot_from_file(filename, filename2=None, is_pickle=True, out_file="zz_results.pdf"):
+def plot_from_file(filename, filename2=None, is_pickle=True, out_file="zz_results.pdf", only_error=False):
     """ Tiny function to plot the data files produced by the iterative tests. 
 
     If two filenames are given, the measurements of both are superimposed.
@@ -661,33 +669,236 @@ def plot_from_file(filename, filename2=None, is_pickle=True, out_file="zz_result
     # Plot K-L Divergence
     #plot_kl([k[0] for k in kl], [k[1] for k in kl])
 
-    # Actually plot
-    dimensions = (7,5)
-    # Accuracy
-    plt.figure(figsize=dimensions)
-    plt.subplot(2,1,1)
-    plt.plot(error)
-    plt.ylim([0.0, 1.1*max(error)])
-    plt.xlim([0, len(accuracy)])
-    plt.ylabel("Total Error")
-    # Combinations
-    plt.subplot(2,1,2)
-    plt.xlim([0, len(accuracy)])
-    plt.ylabel("Visited Combinations (n)")
-    # Correct classifications
-    plt.plot(count, label="Visited combinations")
-    #plt.hold(True)
-    #plt.plot(correct, '--', label="Correct classifications")
-    #plt.xlim([0, len(accuracy)])
-    #plt.ylabel("Correct\nClassifications")
+    if only_error:
+        # Actually plot
+        dimensions = (7,4)
+        # Accuracy
+        plt.figure(figsize=dimensions)
+        plt.plot(error)
+        plt.ylim([0.0, 1.1*max(error)])
+        plt.xlim([0, len(accuracy)])
+        plt.ylabel("Total Error")
+    else:
+        # Actually plot
+        dimensions = (7,5)
+        # Accuracy
+        plt.figure(figsize=dimensions)
+        plt.subplot(2,1,1)
+        plt.plot(error)
+        plt.ylim([0.0, 1.1*max(error)])
+        plt.xlim([0, len(accuracy)])
+        plt.ylabel("Total Error")
+        # Combinations
+        plt.subplot(2,1,2)
+        plt.xlim([0, len(accuracy)])
+        plt.ylabel("Visited Combinations (n)")
+        # Correct classifications
+        plt.plot(count, label="Visited combinations")
+        #plt.hold(True)
+        #plt.plot(correct, '--', label="Correct classifications")
+        #plt.xlim([0, len(accuracy)])
+        #plt.ylabel("Correct\nClassifications")
 
-    #plt.legend(loc="lower right", ncol=1)
+        #plt.legend(loc="lower right", ncol=1)
 
     # Add iterations label to final plot
     plt.xlabel("Iterations (k)")
 
+    # Activate tight layout
+    plt.tight_layout()
+
     # Save the figure
     plt.savefig(out_file)
+
+
+def fault_tolerance_test(pickle_file="results_fault.pickle"):
+    """ A different scenario where the system's fault-tolerance is tested
+    by causing a failure in one of the modules and, afterwards, adding new
+    users to the system. """
+    # Initialize population simulator
+    profiles = dict()
+    profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4]]
+    profile_evidence = [2,3]
+    num_clusters = len(profiles[tuple(profile_evidence)])
+    population1 = population_simulator(number_of_users=NUMBER_OF_USERS, evidence_structure=EVIDENCE_STRUCTURE, characteristics_structure=CHARACTERISTICS_STRUCTURE, profiles=profiles)
+    population2 = population_simulator(number_of_users=NUMBER_OF_USERS, evidence_structure=EVIDENCE_STRUCTURE, characteristics_structure=CHARACTERISTICS_STRUCTURE, profiles=profiles)
+
+    # Initialize counters
+    error = []
+    accuracy = []
+    kl=[]
+
+    # Initialize population models and visited combinations dictionaries
+    user_characteristics_local_1 = dict()
+    user_characteristics_local_2 = dict()
+    visited_combinations_local_1 = dict()
+    visited_combinations_local_2 = dict()
+
+    # Define characteristics models
+    c_models = []
+    for i in range(len(CHARACTERISTICS_STRUCTURE)):
+        c_models.append(characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[i], NUMBER_OF_USERS))
+
+    # Reset population back to uniform
+    reset_population(user_characteristics_local_1)
+    reset_population(user_characteristics_local_2)
+
+    # Run for a few iterations to stabilize clusters
+    for i in range(NUMBER_OF_ITERATIONS):
+        # Inform on current iteration
+        os.system('clear')
+        print("Running first iterations until convergence.")
+        print("I'm going to save results in {}.".format(pickle_file))
+        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        if i > 0:
+            print("Previous accuracy: {}.".format(accuracy[-1][0]))
+            print("Previous total error: {}".format(error[-1][0]))
+        
+        # Generate evidence and characteristics
+        evidence, characteristics = population1.generate()
+        identity = evidence.pop()
+        char_result = []
+
+        # Run main cycle for each model
+        for j in range(len(c_models)):
+            # Instantiate
+            result_class, entropy = c_models[j].instantiate(evidence, identity)
+            # Generate labels
+            T = generate_label(result_class, entropy, evidence, identity, characteristics[j], combinations=visited_combinations_local_1)
+            # Append to results vector
+            char_result.append(result_class)
+            # Fuse into previous knowledge
+            c_models[j].fuse(T)
+
+        # Mark combination as visited
+        visited_combinations_local_1[tuple(evidence) + (identity,)] = True
+
+        # Update user representation
+        user_characteristics_local_1[tuple(evidence) + (identity,)] = copy.copy(char_result)
+
+        # Calculate accuracy
+        accuracy.append(calculate_accuracy(user_characteristics_local_1, population1.get_users()))
+        error.append(calculate_estimation_error(user_characteristics_local_1, population1.get_users(), visited_combinations_local_1, evidence=profile_evidence))
+
+    # Retrieve clusters from population
+    print("Clustering population.")
+    clusters = cluster_population(user_characteristics_local_1, profile_evidence, return_gmm=True, num_clusters=num_clusters)
+
+    # Disable one of the modules and infer from clusters for an equal number of iterations
+    for i in range(NUMBER_OF_ITERATIONS):
+        # Inform on current iteration
+        os.system('clear')
+        print("Running after first fault.")
+        print("I'm going to save results in {}.".format(pickle_file))
+        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        if i > 0:
+            print("Previous accuracy: {}.".format(accuracy[-1][0]))
+            print("Previous total error: {}".format(error[-1][0]))
+        
+        # Generate evidence and characteristics
+        evidence, characteristics = population1.generate()
+        identity = evidence.pop()
+        char_result = []
+
+        # Run main cycle for each model
+        for j in range(len(c_models)):
+            # Instantiate
+            result_class, entropy = c_models[j].instantiate(evidence, identity)
+            # Generate labels
+            T = generate_label(result_class, entropy, evidence, identity, characteristics[j], combinations=visited_combinations_local_1)
+            # Append to results vector
+            char_result.append(result_class)
+            # Fuse into previous knowledge
+            #c_models[j].fuse(T)
+
+        # Mark combination as visited
+        visited_combinations_local_1[tuple(evidence) + (identity,)] = True
+
+        # Update user representation
+        user_characteristics_local_1[tuple(evidence) + (identity,)] = copy.copy(char_result)
+
+        # If we're at the right evidence, replace one estimate with one from the clusters
+        # (we're simulating a failure in module 0)
+        if evidence == profile_evidence:
+            # Determine the closest cluster
+            min_dist = 1000
+            estimate = -1
+            for cluster in clusters[0]:
+                dist = np.linalg.norm(np.subtract(cluster[1:], evidence[1:]))
+                if dist < min_dist:
+                    min_dist = dist
+                    estimate = np.round(cluster[0])
+            # Get from cluster:
+            user_characteristics_local_1[tuple(evidence) + (identity,)][0] = estimate
+
+        # Calculate accuracy
+        accuracy.append(calculate_accuracy(user_characteristics_local_1, population1.get_users()))
+        error.append(calculate_estimation_error(user_characteristics_local_1, population1.get_users(), visited_combinations_local_1, evidence=profile_evidence))
+
+
+    # Add new users to the pool, model their characteristics and infer the remaining from clusters
+    # Define characteristics models
+    c_models2 = []
+    for i in range(len(CHARACTERISTICS_STRUCTURE)):
+        c_models2.append(characteristic_model(EVIDENCE_STRUCTURE, CHARACTERISTICS_STRUCTURE[i], NUMBER_OF_USERS))
+    for i in range(NUMBER_OF_ITERATIONS):
+        # Inform on current iteration
+        os.system('clear')
+        print("Running after adding a new population.")
+        print("I'm going to save results in {}.".format(pickle_file))
+        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        if i > 0:
+            print("Previous accuracy: {}.".format(accuracy[-1][0]))
+            print("Previous total error: {}".format(error[-1][0]))
+        
+        # Generate evidence and characteristics
+        evidence, characteristics = population2.generate()
+        identity = evidence.pop()
+        char_result = []
+
+        # Run main cycle for each model
+        for j in range(len(c_models2)):
+            # Instantiate
+            result_class, entropy = c_models2[j].instantiate(evidence, identity)
+            # Generate labels
+            T = generate_label(result_class, entropy, evidence, identity, characteristics[j], combinations=visited_combinations_local_2)
+            # Append to results vector
+            char_result.append(result_class)
+            # Fuse into previous knowledge
+            c_models2[j].fuse(T)
+
+        # Mark combination as visited
+        visited_combinations_local_2[tuple(evidence) + (identity,)] = True
+
+        # Update user representation
+        user_characteristics_local_2[tuple(evidence) + (identity,)] = copy.copy(char_result)
+
+        # If we're at the right evidence, replace one estimate with one from the clusters
+        # (we're simulating a failure in module 0)
+        if evidence == profile_evidence:
+            # Determine the closest cluster
+            min_dist = 1000
+            estimate = -1
+            for cluster in clusters[0]:
+                dist = np.linalg.norm(np.subtract(cluster[1:], evidence[1:]))
+                if dist < min_dist:
+                    min_dist = dist
+                    estimate = np.round(cluster[0])
+            # Get from cluster:
+            user_characteristics_local_2[tuple(evidence) + (identity,)][0] = estimate
+
+        # Calculate accuracy
+        accuracy.append(calculate_accuracy(user_characteristics_local_2, population1.get_users()))
+        error1 = calculate_estimation_error(user_characteristics_local_1, population1.get_users(), visited_combinations_local_1, evidence=profile_evidence)
+        error2 = calculate_estimation_error(user_characteristics_local_2, population2.get_users(), visited_combinations_local_2, evidence=profile_evidence)
+        # Combine errors
+        error2[0] = error2[0] + error1[0]
+        error.append(error2)
+
+
+    # Save results to file
+    with open(pickle_file, "wb") as pickle_file:
+        pickle.dump([accuracy, kl, error], pickle_file)
 
 
 def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=False, fusion=True, epsilon=None, for_video=False):
@@ -708,6 +919,20 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
     # Initialize population simulator
     profiles = dict()
     profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4]]
+    #profiles[(2,3)] = [[2,8,2], [8,2,8], [8,8,4]]
+
+    # Initialize population
+    # Build the ranges for all evidence and create an iterator
+    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
+
+    # Initialize characteristics for all evidence combination
+    # for i in range(NUMBER_OF_USERS):
+    #     iterator = itertools.product(*a)
+    #     for comb in iterator:
+    #         user_characteristics[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
+    #         profiles[comb] = [[2,8,2], [8,2,8], [8,8,4]]
+    #         pass
+
     #profile_evidence = [1]*len(EVIDENCE_STRUCTURE)
     profile_evidence = [2,3]
     #profiles[tuple(profile_evidence)] = [[2,2], [3,3]]
@@ -841,7 +1066,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
         plot_population_cluster(*clusters, filename="zz_result_clusters.pdf")
 
 
-def reset_population():
+def reset_population(population=user_characteristics):
     """ This function resets the global population back to uniformity. """
     # Initialize population
     # Build the ranges for all evidence and create an iterator
@@ -851,7 +1076,7 @@ def reset_population():
     for i in range(NUMBER_OF_USERS):
         iterator = itertools.product(*a)
         for comb in iterator:
-            user_characteristics[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
+            population[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
 
 
 def debug():
@@ -903,4 +1128,6 @@ if __name__=="__main__":
 
     # Other stuff
     #iterative_test(pickle_file="results.pickle")
-    plot_from_file("results.pickle", is_pickle=True)
+    #plot_from_file("results.pickle", is_pickle=True)
+    #fault_tolerance_test()
+    plot_from_file("results_fault.pickle", is_pickle=True, only_error=True)
