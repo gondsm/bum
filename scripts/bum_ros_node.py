@@ -37,6 +37,14 @@ class BumRosNode:
 			#print(self._gdc)
 
 		# Instantiate objects according to GDC
+		characteristics = self._gdc["C"]
+		evidence = self._gdc["E"]
+		self._c_models = dict()
+		for key in characteristics:
+			n_classes = characteristics[key]["nclasses"]
+			evidence_structure = [evidence[ev]["nclasses"] for ev in characteristics[key]["input"]]
+			nusers = 10 #TODO: Get this from somewhere
+			self._c_models[key] = bum_classes.characteristic_model(evidence_structure, n_classes, nusers)
 
 	def evidence_callback(self, data):
 		""" Receives evidence and produces a new prediction. """
