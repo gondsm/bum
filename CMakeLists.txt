@@ -52,6 +52,7 @@ add_message_files(
   FILES
   Tuple.msg
   Likelihood.msg
+  Evidence.msg
 )
 
 ## Generate services in the 'srv' folder
