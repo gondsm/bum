@@ -1,0 +1,32 @@
+# Characteristics
+C:
+  C1: 
+    input: 
+      - E1 
+      - E2 
+      - E3
+    nclasses: 10
+  C2: 
+    input: 
+      - E1 
+      - E2 
+    nclasses: 10
+  C3:
+    input:
+      - E3
+    nclasses: 10
+
+# Evidence
+E:
+  E1:
+    nclasses: 10
+  E2:
+    nclasses: 10
+  E3:
+    nclasses: 10
+
+# Specify characteristics this node will word on
+Active:
+  - C1
+  - C2
+  - C3

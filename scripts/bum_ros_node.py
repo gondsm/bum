@@ -3,6 +3,9 @@
 from __future__ import division
 from __future__ import print_function
 
+# Standard Lib
+import yaml
+
 # ROS
 import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
@@ -17,7 +20,7 @@ class BumRosNode:
 	and so on. It responds to a number of ROS topics according to the
 	design of the BUM system.
 	"""
-	def __init__(self):
+	def __init__(self, gdc_filename):
 		""" Initializes the ROS node and the estimators specified. """
 		# Initialize ROS node
 		rospy.init_node('bum_ros_node')
@@ -28,8 +31,12 @@ class BumRosNode:
 		rospy.Subscriber("bum/evidence", Evidence, self.evidence_callback)
 		rospy.Subscriber("bum/tuple", Tuple, self.tuple_callback)
 
-		# TODO: Read Global Characteristic Description
+		# Read Global Characteristic Description
+		with open(gdc_filename, "r") as gdc_file:
+			self._gdc = yaml.load(gdc_file)
+			#print(self._gdc)
 
+		# Instantiate objects according to GDC
 
 	def evidence_callback(self, data):
 		""" Receives evidence and produces a new prediction. """
@@ -63,8 +70,8 @@ class BumRosNode:
 
 
 if __name__=="__main__":
-	# Initialize object
-	b = BumRosNode()
+	# Initialize object (with a sample file for now)
+	b = BumRosNode("/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd")
 
 	# Let it do its thing
 	b.run()
