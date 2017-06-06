@@ -7,3 +7,5 @@ python3 user_model_tests.py
 ```
 
 to run the basic tests.
+
+This package depends on the ProBT probabilistic computation package, which must be installed or manually added to the PYTHONPATH via a script similar to `prep_pypl_env.sh`.
