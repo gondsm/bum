@@ -13,5 +13,11 @@ This package depends on the ProBT probabilistic computation package, which must 
 Useful command to publish evidence:
 
 ```
-rostopic pub /bum/evidence bum_ros/Evidence "{values:[1,2,3], evidence_ids:['E1', 'E2', 'E3'], ur_id: 1}"
+rostopic pub /bum/evidence bum_ros/Evidence "{values:[2,3,2], evidence_ids:['E1', 'E2', 'E3'], user_id: 1}"
+```
+
+Useful command to publish a tuple:
+
+```
+rostopic pub /bum/tuple bum_ros/Tuple "{char_id: 'C1', characteristic: 4, evidence: [2, 3, 2], user_id: 1, h: 0.8}"
 ```
