@@ -44,6 +44,7 @@ from scipy import linalg
 
 # Custom
 from bum_classes import * # I know this is ugly
+from bum_utils import *
 
 # Constants
 # These are global constant variables that guide the instantiation of the
