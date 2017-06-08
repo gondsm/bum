@@ -24,32 +24,37 @@ class BumRosNode:
         """ Initializes the ROS node and the estimators specified. """
         # Initialize ROS node
         rospy.init_node('bum_ros_node')
-        rospy.loginfo("BUM ROS node started!")
+
+        # Read GDC file
+        with open(gdc_filename, "r") as gdc_file:
+            self._gdc = yaml.load(gdc_file)
+
+        # Import configuration to local variables
+        characteristics = self._gdc["C"]
+        config = self._gdc["Config"]
+        active = config["Active"]
+        evidence = self._gdc["E"]
+        nusers = self._gdc["nusers"]
 
         # Initialize subscribers
         rospy.Subscriber("bum/likelihood", Likelihood, self.likelihood_callback)
         rospy.Subscriber("bum/evidence", Evidence, self.evidence_callback)
-        rospy.Subscriber("bum/tuple", Tuple, self.tuple_callback)
-
-        # Read Global Characteristic Description
-        with open(gdc_filename, "r") as gdc_file:
-            self._gdc = yaml.load(gdc_file)
-            #print(self._gdc)
+        if config["Fusion"]:
+            rospy.Subscriber("bum/tuple", Tuple, self.tuple_callback)        
 
         # Instantiate objects according to GDC
-        characteristics = self._gdc["C"]
-        active = self._gdc["Active"]
-        evidence = self._gdc["E"]
-        nusers = self._gdc["nusers"]
         self._c_models = dict()
         for key in active:
             n_classes = characteristics[key]["nclasses"]
             evidence_structure = [evidence[ev]["nclasses"] for ev in characteristics[key]["input"]]
             self._c_models[key] = bum_classes.characteristic_model(evidence_structure, n_classes, nusers)
 
-        #for key in self._c_models:
-        #   rospy.loginfo("We have models for {}.".format(key))
-        #   rospy.loginfo("With inputs {}.".format(self.get_characteristic_input(key)))
+        # Report on the abilities of this node
+        rospy.loginfo("BUM ROS node started!")
+        rospy.loginfo("We have the following models:")
+        for key in self._c_models:
+           rospy.loginfo("\tCharacteristic {} with inputs {}.".format(key, self.get_characteristic_input(key)))
+        rospy.loginfo("Fusion is active in this node: {}.".format(config["Fusion"]))
 
 
     def get_characteristic_input(self, c):

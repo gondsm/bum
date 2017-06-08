@@ -25,11 +25,15 @@ E:
   E3:
     nclasses: 10
 
-# Specify characteristics this node will word on
-Active:
-  - C1
-  - C2
-  - C3
-
 # Specify the number of users
 nusers: 10
+
+# Configuration of the node
+# Specify characteristics this node will word on
+Config:
+  Active:
+    - C1
+    - C2
+    - C3
+  Fusion: True
+
