@@ -29,11 +29,14 @@ E:
 nusers: 10
 
 # Configuration of the node
-# Specify characteristics this node will word on
 Config:
+  # Specify characteristics this node will work on
   Active:
     - C1
     - C2
     - C3
+  # Will this node fuse tuples?
   Fusion: True
+  # Will tuples be published whenever a new prediction is made?
+  Publish_on_predict : True
 

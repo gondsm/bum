@@ -40,7 +40,14 @@ class BumRosNode:
         rospy.Subscriber("bum/likelihood", Likelihood, self.likelihood_callback)
         rospy.Subscriber("bum/evidence", Evidence, self.evidence_callback)
         if config["Fusion"]:
-            rospy.Subscriber("bum/tuple", Tuple, self.tuple_callback)        
+            rospy.Subscriber("bum/tuple", Tuple, self.tuple_callback)
+
+        # Initialize publishers
+        if config["Publish_on_predict"]:
+            self._tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
+        else:
+            # Initialize emtpy variable to signal that we won't publish
+            self._tuple_pub = None
 
         # Instantiate objects according to GDC
         self._c_models = dict()
@@ -55,6 +62,7 @@ class BumRosNode:
         for key in self._c_models:
            rospy.loginfo("\tCharacteristic {} with inputs {}.".format(key, self.get_characteristic_input(key)))
         rospy.loginfo("Fusion is active in this node: {}.".format(config["Fusion"]))
+        rospy.loginfo("Publishing on estimation is active in this node: {}.".format(bool(self._tuple_pub)))
 
 
     def get_characteristic_input(self, c):
@@ -94,7 +102,17 @@ class BumRosNode:
                 # If a prediction is made
                 predictions[key] = result
 
-        # Return predictions
+                # Publish new tuple, if appropriate
+                if self._tuple_pub:
+                    out_msg = Tuple()
+                    out_msg.char_id = key
+                    out_msg.characteristic = result
+                    out_msg.evidence = char_input
+                    out_msg.user_id = uid
+                    out_msg.h = entropy
+                    self._tuple_pub.publish(out_msg)
+
+        # Display predictions
         rospy.loginfo("New predictions:")
         rospy.loginfo(predictions)
 
