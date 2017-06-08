@@ -40,11 +40,11 @@ class BumRosNode:
         characteristics = self._gdc["C"]
         active = self._gdc["Active"]
         evidence = self._gdc["E"]
+        nusers = self._gdc["nusers"]
         self._c_models = dict()
         for key in active:
             n_classes = characteristics[key]["nclasses"]
             evidence_structure = [evidence[ev]["nclasses"] for ev in characteristics[key]["input"]]
-            nusers = 10 #TODO: Get this from somewhere
             self._c_models[key] = bum_classes.characteristic_model(evidence_structure, n_classes, nusers)
 
         #for key in self._c_models:

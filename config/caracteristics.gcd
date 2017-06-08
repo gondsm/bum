@@ -30,3 +30,6 @@ Active:
   - C1
   - C2
   - C3
+
+# Specify the number of users
+nusers: 10
