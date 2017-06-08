@@ -9,3 +9,9 @@ python3 user_model_tests.py
 to run the basic tests.
 
 This package depends on the ProBT probabilistic computation package, which must be installed or manually added to the PYTHONPATH via a script similar to `prep_pypl_env.sh`.
+
+Useful command to publish evidence:
+
+```
+rostopic pub /bum/evidence bum_ros/Evidence "{values:[1,2,3], evidence_ids:['E1', 'E2', 'E3'], ur_id: 1}"
+```
