@@ -85,7 +85,7 @@ class BumRosNode:
             # If we have all of the inputs, we predict
             if len(char_input) == len(inputs):
                 # Formalize evidence (with user ID)
-                result = self._c_models[key].instantiate(char_input, uid)
+                result, entropy = self._c_models[key].instantiate(char_input, uid)
                 # If a prediction is made
                 predictions[key] = result
 
@@ -97,9 +97,16 @@ class BumRosNode:
     def tuple_callback(self, data):
         """ Receives a new tuple, which is fused into the model. """
         rospy.loginfo("Received tuple!")
-        # Separate tuple according to the characteristic
+        # Import evidence to local variables for clarity
+        vals = list(data.evidence)
+        characteristic = data.characteristic
+        char_id = data.char_id
+        uid = data.user_id
+        h = data.h
 
-        # Fuse into each of the characteristic models
+        # Fuse into the corresponding characteristic models
+        T = [characteristic, vals, uid, h]
+        self._c_models[char_id].fuse(T)
 
 
     def likelihood_callback(self, data):
