@@ -30,7 +30,7 @@ rostopic pub /bum/evidence bum_ros/Evidence "{values:[2,3,2], evidence_ids:['E1'
 Useful command to publish a tuple:
 
 ```
-rostopic pub /bum/tuple bum_ros/Tuple "{char_id: 'C1', characteristic: 4, evidence: [2, 3, 2], user_id: 1, h: 0.8}"
+rostopic pub /bum/tuple bum_ros/Tuple "{char_id: 'C1', characteristic: 4, evidence: [2, 3, 2], user_id: 1, h: 0.8, hard: False}"
 ```
 
 

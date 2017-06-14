@@ -10,30 +10,21 @@ import yaml
 import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
 
-GDC = None
+GCD = None
 
 # TODO: Receive these as input
 ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/ev_log.yaml"
 exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/exec_log.yaml"
-gdc_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
+gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
 
-def log_evidence(evidence, identity, characteristics=None, filename=None):
+def log_evidence(evidence, identity, characteristic, char_id, filename=None):
     """ This function adds a new record to the evidence log. 
 
-    Charateristics are received as a dict "char_id" -> value. 
-    Evidence is also received as a dict "ev_id" -> value
-    """
-    # Sanitize inputs
-    if type(evidence) is not dict:
-        rospy.logerr("Evidence vector should be a dict!")
-        return
-    if type(identity) is not int:
-        rospy.logerr("Identity should be an integer!")
-        return
-    if characteristics and type(characteristics) is not dict:
-        rospy.logerr("Characteristics vector should be a dict!")
-        return
+    Charateristics are received as a value and an string id. 
+    Evidence is received as a list of values.
 
+    Evidence IDs can be retrieved via the GCD
+    """
     # Opens the file, or creates it if it doesn't exist
     try:
         data_file = open(filename, 'a')
@@ -45,8 +36,7 @@ def log_evidence(evidence, identity, characteristics=None, filename=None):
     data_dict = dict()
     data_dict["Evidence"] = evidence
     data_dict["Identity"] = identity
-    if characteristics:
-        data_dict["C"] = characteristics
+    data_dict[char_id] = characteristic
     data.append(data_dict)
 
     # Write to file
@@ -115,7 +105,7 @@ def playback_evidence(filename):
     # For each entry in the log
     for record in in_data:
         try:
-            # If a characteristic is received, we publish as Tuple according to the GDC
+            # If a characteristic is received, we publish as Tuple according to the GCD
             # Each different characteristic earns a different hard tuple publication
             # with its own evidence in the correct order
             for key in record["C"]:
@@ -125,9 +115,9 @@ def playback_evidence(filename):
                 tuple_msg.user_id = record["Identity"]
                 tuple_msg.h = 0.001
                 tuple_msg.hard = True
-                # Fill in evidence in the correct order according to the GDC
+                # Fill in evidence in the correct order according to the GCD
                 ev = []
-                for ev_id in GDC["C"][key]["input"]:
+                for ev_id in GCD["C"][key]["input"]:
                     for key in record["Evidence"]:
                         if key == ev_id:
                             ev.append(record["Evidence"][key])
@@ -156,8 +146,20 @@ def playback_evidence(filename):
 
 
 def tuple_callback(msg):
-    """ A callback for directing tuples to the logging functions. """
-    pass
+    """ A callback for directing tuples to the logging functions. 
+
+    If a tuple is hard evidence, it is logged as evidence. If it is a soft
+    tuple, it's logged as an execution."""
+    # First we check whether we got hard evidence
+    if msg.hard == True:
+        # In this case, we log as evidence
+        log_evidence(list(msg.evidence), msg.user_id, msg.characteristic, msg.char_id, filename=ev_log_file)
+        pass
+    else:
+        # Otherwise, we log as a classification result
+        log_classification(list(msg.evidence), msg.user_id, msg.characteristic, msg.char_id, msg.h, exec_log_file)
+
+
 
 
 def evidence_callback(msg):
@@ -180,9 +182,9 @@ if __name__=="__main__":
     rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
     rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
     
-    # Read GDC file
-    with open(gdc_filename, "r") as gdc_file:
-        GDC = yaml.load(gdc_file)
+    # Read GCD file
+    with open(gcd_filename, "r") as gcd_file:
+        GDC = yaml.load(gcd_file)
 
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, {"C1": 2}, filename=ev_log_file)
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
