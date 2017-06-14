@@ -12,6 +12,11 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 
 GDC = None
 
+# TODO: Receive these as input
+ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/ev_log.yaml"
+exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/exec_log.yaml"
+gdc_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
+
 def log_evidence(evidence, identity, characteristics=None, filename=None):
     """ This function adds a new record to the evidence log. 
 
@@ -45,6 +50,7 @@ def log_evidence(evidence, identity, characteristics=None, filename=None):
     data.append(data_dict)
 
     # Write to file
+    rospy.loginfo("Loggin evidence: {}.".format(data))
     data_file.write(yaml.dump(data, default_flow_style=False))
 
 
@@ -149,15 +155,30 @@ def playback_evidence(filename):
         r.sleep()
 
 
+def tuple_callback(msg):
+    """ A callback for directing tuples to the logging functions. """
+    pass
+
+
+def evidence_callback(msg):
+    """ A callback for directing evidence to the logging function. """
+    # Evidence must be a dictionary
+    ev_dict = dict()
+    for i, ev_id in enumerate(msg.evidence_ids):
+        ev_dict[ev_id] = msg.values[i]
+
+    # Log this evidence
+    log_evidence(ev_dict, msg.user_id, None, ev_log_file)
+
+
 if __name__=="__main__":
     # Initialize ROS node
     rospy.init_node('data_manager_node')
     rospy.loginfo("BUM Data Manager ROS node started!")
 
-    # TODO: Receive these as input
-    ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/ev_log.yaml"
-    exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/exec_log.yaml"
-    gdc_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
+    # Initialize subscribers
+    rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
+    rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
     
     # Read GDC file
     with open(gdc_filename, "r") as gdc_file:
