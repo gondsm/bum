@@ -14,3 +14,6 @@ uint32 user_id
 
 # The entropy or certainty level of the classification
 float32 h
+
+# Signals whether this tuple is hard evidence or not
+bool hard

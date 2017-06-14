@@ -110,6 +110,7 @@ class BumRosNode:
                     out_msg.evidence = char_input
                     out_msg.user_id = uid
                     out_msg.h = entropy
+                    out_msg.hard = False
                     self._tuple_pub.publish(out_msg)
 
         # Display predictions
