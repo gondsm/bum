@@ -184,7 +184,7 @@ if __name__=="__main__":
     
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:
-        GDC = yaml.load(gcd_file)
+        GCD = yaml.load(gcd_file)
 
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, {"C1": 2}, filename=ev_log_file)
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
