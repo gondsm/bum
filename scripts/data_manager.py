@@ -48,6 +48,31 @@ def log_evidence(evidence, identity, characteristics=None, filename=None):
     data_file.write(yaml.dump(data, default_flow_style=False))
 
 
+def log_classification(evidence, identity, characteristic, char_id, entropy, filename):
+    """ This function adds a new record to the execution log, for later
+    evaluation.
+    """
+    # TODO: Sanitize inputs
+
+    # Opens the file, or creates it if it doesn't exist
+    try:
+        data_file = open(filename, 'a')
+    except IOError:
+        data_file = open(filename, 'w')
+
+    # Prepare data dictionary
+    data = []
+    data_dict = dict()
+    data_dict["Evidence"] = evidence
+    data_dict["Identity"] = identity
+    data_dict["Entropy"] = entropy
+    data_dict[char_id] = characteristic
+    data.append(data_dict)
+
+    # Write to file
+    data_file.write(yaml.dump(data, default_flow_style=False))
+
+
 def playback_evidence(filename):
     """ This funcion plays back evidence recorded in filename. 
 
@@ -131,6 +156,7 @@ if __name__=="__main__":
 
     # TODO: Receive these as input
     ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/ev_log.yaml"
+    exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/exec_log.yaml"
     gdc_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
     
     # Read GDC file
@@ -141,4 +167,7 @@ if __name__=="__main__":
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
     #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
-    playback_evidence(ev_log_file)
+    #playback_evidence(ev_log_file)
+    #log_classification([1,2,3], 2, 1, "C1", 0.1, exec_log_file)
+
+    rospy.spin()
