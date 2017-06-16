@@ -17,13 +17,11 @@ ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/ev_log.yaml"
 exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/exec_log.yaml"
 gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
 
-def log_evidence(evidence, identity, characteristic, char_id, filename=None):
+def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
 
     Charateristics are received as a value and an string id. 
-    Evidence is received as a list of values.
-
-    Evidence IDs can be retrieved via the GCD
+    Evidence is received as a dict ev_id -> value
     """
     # Opens the file, or creates it if it doesn't exist
     try:
@@ -36,20 +34,22 @@ def log_evidence(evidence, identity, characteristic, char_id, filename=None):
     data_dict = dict()
     data_dict["Evidence"] = evidence
     data_dict["Identity"] = identity
-    data_dict[char_id] = characteristic
+    if characteristic is not None:
+        data_dict[char_id] = characteristic
     data.append(data_dict)
 
     # Write to file
-    rospy.loginfo("Loggin evidence: {}.".format(data))
+    rospy.loginfo("Logging evidence: {}.".format(data))
     data_file.write(yaml.dump(data, default_flow_style=False))
+
+    # ... and close the file
+    data_file.close()
 
 
 def log_classification(evidence, identity, characteristic, char_id, entropy, filename):
     """ This function adds a new record to the execution log, for later
     evaluation.
     """
-    # TODO: Sanitize inputs
-
     # Opens the file, or creates it if it doesn't exist
     try:
         data_file = open(filename, 'a')
@@ -66,7 +66,11 @@ def log_classification(evidence, identity, characteristic, char_id, entropy, fil
     data.append(data_dict)
 
     # Write to file
+    rospy.loginfo("Logging classification: {}.".format(data))
     data_file.write(yaml.dump(data, default_flow_style=False))
+
+    # ... and close the file
+    data_file.close()
 
 
 def playback_evidence(filename):
@@ -153,13 +157,18 @@ def tuple_callback(msg):
     # First we check whether we got hard evidence
     if msg.hard == True:
         # In this case, we log as evidence
-        log_evidence(list(msg.evidence), msg.user_id, msg.characteristic, msg.char_id, filename=ev_log_file)
+        # Get evidence IDs from the GCD
+        ev_dict = dict()
+        inputs = GCD["C"][msg.char_id]["input"]
+        for i, ev_id in enumerate(inputs):
+            ev_dict[ev_id] = msg.evidence[i]
+
+        # Send to the logging function
+        log_evidence(ev_dict, msg.user_id, msg.characteristic, msg.char_id, ev_log_file)
         pass
     else:
         # Otherwise, we log as a classification result
         log_classification(list(msg.evidence), msg.user_id, msg.characteristic, msg.char_id, msg.h, exec_log_file)
-
-
 
 
 def evidence_callback(msg):
@@ -170,7 +179,7 @@ def evidence_callback(msg):
         ev_dict[ev_id] = msg.values[i]
 
     # Log this evidence
-    log_evidence(ev_dict, msg.user_id, None, ev_log_file)
+    log_evidence(ev_dict, msg.user_id, None, None, ev_log_file)
 
 
 if __name__=="__main__":
