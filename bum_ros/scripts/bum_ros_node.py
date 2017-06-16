@@ -148,7 +148,7 @@ class BumRosNode:
 
 if __name__=="__main__":
     # Initialize object (with a sample file for now)
-    b = BumRosNode("/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd")
+    b = BumRosNode("/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd")
 
     # Let it do its thing
     b.run()

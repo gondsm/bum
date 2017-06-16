@@ -13,9 +13,9 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 GCD = None
 
 # TODO: Receive these as input
-ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/ev_log.yaml"
-exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/config/exec_log.yaml"
-gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
+ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/ev_log.yaml"
+exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/exec_log.yaml"
+gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
 
 def log_evidence(evidence, identity, characteristic, char_id, filename=None):
     """ This function adds a new record to the evidence log. 

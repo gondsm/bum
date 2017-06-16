@@ -17,7 +17,7 @@ import radar_chart_example as radar_chart
 GCD = None
 
 # TODO: Receive from input
-gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/config/caracteristics.gcd"
+gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
 
 radar_fig = None
 
