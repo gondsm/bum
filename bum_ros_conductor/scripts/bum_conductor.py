@@ -9,11 +9,18 @@ import yaml
 # ROS
 import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
-#from conductor import gmu_functions as robot
+from conductor import gmu_functions as robot
+#import conductor
+
+#print(conductor.__dict__)
 
 if __name__ == "__main__":
     # Initialize ROS node
     rospy.init_node('bum_ros_conductor')
+
+    # Initialze the robot's functions
+    robot.init_functions()
+    robot.speak("Hello!", lang="en-EN")
 
     # Initialize publishers
     tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
