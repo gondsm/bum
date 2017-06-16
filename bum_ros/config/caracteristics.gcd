@@ -37,6 +37,8 @@ Config:
     - C3
   # Will this node fuse tuples?
   Fusion: True
+  # Will it only fuse hard evidence?
+  Only_fuse_hard: False
   # Will tuples be published whenever a new prediction is made?
-  Publish_on_predict : True
+  Publish_on_predict: True
 

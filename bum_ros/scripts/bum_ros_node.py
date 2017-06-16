@@ -20,21 +20,21 @@ class BumRosNode:
     and so on. It responds to a number of ROS topics according to the
     design of the BUM system.
     """
-    def __init__(self, gdc_filename):
+    def __init__(self, gcd_filename):
         """ Initializes the ROS node and the estimators specified. """
         # Initialize ROS node
         rospy.init_node('bum_ros_node')
 
         # Read GDC file
-        with open(gdc_filename, "r") as gdc_file:
-            self._gdc = yaml.load(gdc_file)
+        with open(gcd_filename, "r") as gdc_file:
+            self._gcd = yaml.load(gdc_file)
 
         # Import configuration to local variables
-        characteristics = self._gdc["C"]
-        config = self._gdc["Config"]
+        characteristics = self._gcd["C"]
+        config = self._gcd["Config"]
         active = config["Active"]
-        evidence = self._gdc["E"]
-        nusers = self._gdc["nusers"]
+        evidence = self._gcd["E"]
+        nusers = self._gcd["nusers"]
 
         # Initialize subscribers
         rospy.Subscriber("bum/likelihood", Likelihood, self.likelihood_callback)
@@ -67,7 +67,7 @@ class BumRosNode:
 
     def get_characteristic_input(self, c):
         """ Returns a list of the characteristc's input's ID strings. """
-        return self._gdc["C"][c]["input"]
+        return self._gcd["C"][c]["input"]
 
 
     def evidence_callback(self, data):
@@ -120,17 +120,21 @@ class BumRosNode:
 
     def tuple_callback(self, data):
         """ Receives a new tuple, which is fused into the model. """
-        rospy.loginfo("Received tuple!")
-        # Import evidence to local variables for clarity
-        vals = list(data.evidence)
-        characteristic = data.characteristic
-        char_id = data.char_id
-        uid = data.user_id
-        h = data.h
+        # Check if we should be here
+        if self._gcd["Config"]["Only_fuse_hard"] and data.hard or not self._gcd["Config"]["Only_fuse_hard"]:
+            rospy.loginfo("Received tuple!")
+            # Import evidence to local variables for clarity
+            vals = list(data.evidence)
+            characteristic = data.characteristic
+            char_id = data.char_id
+            uid = data.user_id
+            h = data.h
 
-        # Fuse into the corresponding characteristic models
-        T = [characteristic, vals, uid, h]
-        self._c_models[char_id].fuse(T)
+            # Fuse into the corresponding characteristic models
+            T = [characteristic, vals, uid, h]
+            self._c_models[char_id].fuse(T)
+        else:
+            rospy.loginfo("Received soft tuple, not fusing!")
 
 
     def likelihood_callback(self, data):
