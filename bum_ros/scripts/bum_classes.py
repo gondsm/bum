@@ -1,6 +1,12 @@
 # Futures
 # This was tested on Python3, but might also work on 2.7.
 # The following is DEFINITELY needed:
+""" The bum_classes script
+This script contains the main classes to be used by the BUM system, namely the
+characteristics modules, based on the ProBT computational engine, and the
+population simulator used for testing the system.
+"""
+# Futures
 from __future__ import division
 from __future__ import print_function
 

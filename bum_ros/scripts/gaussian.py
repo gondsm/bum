@@ -1,3 +1,6 @@
+""" The gaussian script
+Used for plotting example figures for illustrations.
+"""
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D

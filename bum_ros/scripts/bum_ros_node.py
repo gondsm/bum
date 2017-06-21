@@ -1,4 +1,9 @@
 #!/usr/bin/python
+""" The bum_ros_node script 
+This is the main ROS node for the BUM system. It can instantiate and fuse
+characteristics, as well as export and import likelihoods received from the 
+remote system. It needs a GCD file to operate (see the config folder).
+"""
 # Futures
 from __future__ import division
 from __future__ import print_function
@@ -21,7 +26,7 @@ class BumRosNode:
     design of the BUM system.
     """
     def __init__(self, gcd_filename):
-        """ Initializes the ROS node and the estimators specified. """
+        """ Initializes the ROS node and the estimators specified in the GCD. """
         # Initialize ROS node
         rospy.init_node('bum_ros_node')
 

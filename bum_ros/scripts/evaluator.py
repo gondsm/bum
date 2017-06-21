@@ -19,8 +19,10 @@ GCD = None
 # TODO: Receive from input
 gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
 
+# Global object for maintaining the figure alive
 radar_fig = None
 
+# The latest set of characteristics, for plotting
 latest_char = dict()
 
 def plot_characteristics(characteristics):
@@ -56,6 +58,7 @@ def plot_characteristics(characteristics):
 
 
 def tuple_callback(msg):
+    """ Responsible for processing new tuples, adds them to the latest characteristics. """
     latest_char[msg.char_id] = msg.characteristic
 
 

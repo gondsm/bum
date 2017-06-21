@@ -1,4 +1,11 @@
 #!/usr/bin/python
+""" The data_manager scripts
+This node is responsible for managing all of the lig files needed by the system.
+It can play back an evidence log for re-testing certain data, and it saves
+evidence (containing both hard examples and non-classified evidence) and
+execution (containing all of the system's responses) logs, for later analysis
+and playback.
+"""
 # Futures
 from __future__ import division
 from __future__ import print_function

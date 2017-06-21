@@ -1,3 +1,8 @@
+""" The bum_utils script
+This script contains utilities, mainly used by the user_model_tests scripts to
+operate normally.
+"""
+
 def generate_label(soft_label, entropy, evidence, identity, hard_label=None, combinations=None):
     """ This function receives the soft_label and entropy and the current
     evidence, and optionally a hard label.

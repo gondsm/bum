@@ -1,4 +1,4 @@
-# This needs to be sourced in order for the ProBT-based modules to work.
+# This needs to be sourced in order for the ProBT-based modules to work when testing with non-ROS system.
 PL_DIR="/home/vsantos/Desktop/probt-spl-3.0.0-linux64-dynamic-release/lib/"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PL_DIR}
 
