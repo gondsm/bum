@@ -16,6 +16,8 @@ import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
 from conductor import gmu_functions as robot
 
+# Signals whether the answers should be retrieved from speech recognition or entered manually
+keyboard_mode = False
 
 # The volume steps we'll cycle through
 volume_steps = [40, 50, 60, 70, 75]
@@ -26,10 +28,11 @@ current_step = 2 # The robot will start in the middle
 max_step = 4 # of a scale going from 0 to 4
 
 # The list of questions to be used in this test
-questions = ["one",
-             "two",
-             "three",
-             "four"]
+questions = ["What can you tell me about your day?",
+             "What are your favourite hobbies?",
+             "How is your research going? Are you getting good results?",
+             "Did you study electrical engineering? What did you like the most about it?"
+             "Being a robot, I feel thunderstorms very personally. How do you feel about the weather we have been having lately?"]
 questions_distance = ["Do you think I am speaking to you at the correct distance?"]
 questions_volume = ["Do you think I am speaking at the correct volume?"]
 
@@ -114,7 +117,8 @@ if __name__ == "__main__":
     evidence_pub = rospy.Publisher('bum/evidence', Evidence, queue_size=10)
 
     # Switch into transcription mode
-    #robot.ask_question = manual_transcription
+    if keyboard_mode:
+        robot.ask_question = manual_transcription
 
     # Loop over all questions
     while questions:
