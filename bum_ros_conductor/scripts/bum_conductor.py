@@ -94,6 +94,7 @@ def manual_transcription(query, kw_repeat=["repeat", "not understand"], lang="en
         rospy.loginfo("Asking question: \"{}\".".format(query))
     else:
         rospy.loginfo("Asking question: \"{}\".".format(query[0]))
+    rospy.loginfo("Please enter your answer:")
     init = time.time()
     text = raw_input().decode(sys.stdin.encoding or locale.getpreferredencoding(True))
     talk_time = time.time() - init
