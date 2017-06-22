@@ -1,0 +1,51 @@
+# A GCD for data gathering with real users
+# Characteristics
+C:
+  C1: 
+    input: []
+    nclasses: 5
+    description: "The user's preferred distance to the robot."
+  C2: 
+    input: []
+    nclasses: 5
+    description: "The user's preferred robot speaking volume."
+  C3:
+    input:
+      - Et0
+      - Et1
+      - Et2
+      - Et3
+      - Et4
+    nclasses: 10
+    description: "The user's talkativeness level"
+
+# Evidence
+E:
+  Et0:
+    nclasses: 20
+  Et1:
+    nclasses: 20
+  Et2:
+    nclasses: 20
+  Et3:
+    nclasses: 20
+  Et4:
+    nclasses: 20
+
+# Specify the number of users
+nusers: 10
+
+# Configuration of the node
+Config:
+  # Specify characteristics this node will work on
+  Active:
+    - C1
+    - C2
+    - C3
+  # Will this node fuse tuples?
+  Fusion: True
+  # Will it only fuse hard evidence?
+  Only_fuse_hard: False
+  # Will tuples be published whenever a new prediction is made?
+  Publish_on_predict: True
+
