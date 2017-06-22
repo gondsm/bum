@@ -51,6 +51,22 @@ rosrun bum_ros_conductor bum_conductor.py
 
 this starts the interaction node, and the GrowMu robot should start speaking.
 
+## Data Gathering
+
+For performing a data gathering run, you have to start the data manager:
+
+```
+rosrun bum_ros data_manager.py
+```
+
+as well as the conductor:
+
+```
+rosrun bum_ros_conductor bum_conductor.py
+```
+
+Naturally, you'll also need to start up any necessary drivers for the robot you are using prior to starting the system.
+
 ## Testing different topologies
 
 *TODO*
