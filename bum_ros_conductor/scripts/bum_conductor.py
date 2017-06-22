@@ -55,8 +55,8 @@ def send_talkativeness_evidence(words, talk_time, ev):
     evidence_msg.values = ev
     evidence_msg.evidence_ids = ["Et{}".format(i) for i in reversed(range(len(ev)))]
     evidence_msg.user_id = 1
-    rospy.loginfo("Publishing new talkativeness evidence:")
-    rospy.loginfo(evidence_msg)
+    rospy.loginfo("Publishing new talkativeness evidence.")
+    #rospy.loginfo(evidence_msg)
     evidence_pub.publish(evidence_msg)
 
 
@@ -69,8 +69,8 @@ def send_volume_tuple(val):
     tuple_msg.user_id = 1
     tuple_msg.h = 0.001
     tuple_msg.hard = True
-    rospy.loginfo("Publishing new volume tuple:")
-    rospy.loginfo(tuple_msg)
+    rospy.loginfo("Publishing new volume tuple.")
+    #rospy.loginfo(tuple_msg)
     tuple_pub.publish(tuple_msg)
 
 
@@ -83,8 +83,8 @@ def send_distance_tuple(val):
     tuple_msg.user_id = 1
     tuple_msg.h = 0.001
     tuple_msg.hard = True
-    rospy.loginfo("Publishing new distance tuple:")
-    rospy.loginfo(tuple_msg)
+    rospy.loginfo("Publishing new distance tuple.")
+    #rospy.loginfo(tuple_msg)
     tuple_pub.publish(tuple_msg)
 
 
