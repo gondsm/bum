@@ -17,7 +17,7 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 from conductor import gmu_functions as robot
 
 # Signals whether the answers should be retrieved from speech recognition or entered manually
-keyboard_mode = False
+keyboard_mode = True
 
 # The volume steps we'll cycle through
 volume_steps = [40, 50, 60, 70, 75]
@@ -51,9 +51,14 @@ def send_talkativeness_evidence(words, talk_time, ev):
     """ Stores and sends talkativeness evidence according to the words and 
     speech time received by the robot. ev is the evidence vector we're
     working with.
+
+    This evidence varies in the range [0, 20[, where 19 represents the maximum
+    of 300 words per minute, or 5 words per second.
     """
     # Send talkativeness evidence
-    ev.append(len(words.split())/talk_time)
+    new_ev = len(words.split())/talk_time
+    new_ev = int((19/5)*new_ev)
+    ev.append(new_ev)
     evidence_msg = Evidence()
     evidence_msg.values = ev
     evidence_msg.evidence_ids = ["Et{}".format(i) for i in reversed(range(len(ev)))]

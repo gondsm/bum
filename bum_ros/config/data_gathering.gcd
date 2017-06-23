@@ -20,6 +20,7 @@ C:
     description: "The user's talkativeness level"
 
 # Evidence
+# EtX: the number of words per minute spoken by the user
 E:
   Et0:
     nclasses: 20
