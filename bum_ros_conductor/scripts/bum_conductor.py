@@ -103,6 +103,28 @@ if __name__ == "__main__":
     # Initialze the robot's functions
     robot.init_functions()
 
+    # Gather ground truth
+    if len(sys.argv) > 1 and sys.argv[1] == "gt":
+        val = []
+        while val != "q":
+            rospy.loginfo("Enter ground truth command [fw, rw, number]. q to exit:")
+            val = raw_input()
+            if val == "fw":
+                # Take a step forward
+                robot.step_forward()
+            if val == "rw":
+                # Take a step back
+                robot.step_forward(reverse=True)
+            try:
+                # Speak at the given level
+                robot.change_volume(volume_steps[int(val)])
+                robot.speak("I am now speaking for a test.", lang="en-EN")
+            except ValueError:
+                pass
+        exit()
+
+        
+
     # Initialize publishers
     tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
     evidence_pub = rospy.Publisher('bum/evidence', Evidence, queue_size=10)
