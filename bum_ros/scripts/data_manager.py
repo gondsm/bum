@@ -203,11 +203,5 @@ if __name__=="__main__":
     with open(gcd_filename, "r") as gcd_file:
         GCD = yaml.load(gcd_file)
 
-    #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, {"C1": 2}, filename=ev_log_file)
-    #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
-    #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
-    #log_evidence({"E1": 1, "E2": 2, "E3": 3},2, filename=ev_log_file)
-    #playback_evidence(ev_log_file)
-    #log_classification([1,2,3], 2, 1, "C1", 0.1, exec_log_file)
-
+    # Let it spin
     rospy.spin()
