@@ -20,9 +20,9 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 GCD = None
 
 # TODO: Receive these as input
-ev_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/ev_log.yaml"
-exec_log_file = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/exec_log.yaml"
-gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
+ev_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"
+exec_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"
+gcd_filename = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/data_gathering.gcd"
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -42,7 +42,8 @@ def log_evidence(evidence, identity, characteristic, char_id, filename):
     data_dict["Evidence"] = evidence
     data_dict["Identity"] = identity
     if characteristic is not None:
-        data_dict[char_id] = characteristic
+        data_dict["C"] = dict()
+        data_dict["C"][char_id] = characteristic
     data.append(data_dict)
 
     # Write to file
