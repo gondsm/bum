@@ -47,7 +47,7 @@ re_no = ".*(no|not).*"
 re_louder = ".*(high|loud).*"
 re_quieter = ".*(quiet|low).*"
 re_closer = ".*(close|near).*"
-re_farther = ".*(away|far).*"
+re_farther = ".*(away|far|further).*"
 
 # Have we already asked about volume and distance?
 asked_distance = False
@@ -67,7 +67,9 @@ def send_talkativeness_evidence(words, talk_time, ev):
     ev.append(new_ev)
     evidence_msg = Evidence()
     evidence_msg.values = ev
+    #evidence_msg.values.append(words)
     evidence_msg.evidence_ids = ["Et{}".format(i) for i in reversed(range(len(ev)))]
+    #evidence_msg.evidence_ids.append("W")
     evidence_msg.user_id = 1
     rospy.loginfo("Publishing new talkativeness evidence.")
     #rospy.loginfo(evidence_msg)
@@ -136,13 +138,15 @@ if __name__ == "__main__":
     # Initialize correct volume
     robot.change_volume(volume_steps[current_volume])
 
+    # Introduce
+    robot.speak("Hello. We will now start a short interaction. Please answer my questions as you see fit.", lang="en-EN")
+
     # Loop over all questions
     while questions:
         # Ask a question and receive answer
         rospy.loginfo("Asking a generic question...")
-        questions.pop(0)
-        #words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
-        #send_talkativeness_evidence(words, talk_time, ev_talk)
+        words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
+        send_talkativeness_evidence(words, talk_time, ev_talk)
 
         # Ask about volume if we haven't already
         if not asked_volume and (random.random() < 0.25 or len(questions) < 3):
