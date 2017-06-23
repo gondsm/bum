@@ -16,6 +16,8 @@ import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
 from conductor import gmu_functions as robot
 
+
+# Global Variables: The truth is that most, if not all, could be in the main function.
 # Signals whether the answers should be retrieved from speech recognition or entered manually
 keyboard_mode = True
 
@@ -46,6 +48,10 @@ re_louder = ".*(high|loud).*"
 re_quieter = ".*(quiet|low).*"
 re_closer = ".*(close|near).*"
 re_farther = ".*(away|far).*"
+
+# Have we already asked about volume and distance?
+asked_distance = False
+asked_volume = False
 
 def send_talkativeness_evidence(words, talk_time, ev):
     """ Stores and sends talkativeness evidence according to the words and 
@@ -123,8 +129,6 @@ if __name__ == "__main__":
                 pass
         exit()
 
-        
-
     # Initialize publishers
     tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
     evidence_pub = rospy.Publisher('bum/evidence', Evidence, queue_size=10)
@@ -136,68 +140,91 @@ if __name__ == "__main__":
     while questions:
         # Ask a question and receive answer
         rospy.loginfo("Asking a generic question...")
-        words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
-        send_talkativeness_evidence(words, talk_time, ev_talk)
+        questions.pop(0)
+        #words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
+        #send_talkativeness_evidence(words, talk_time, ev_talk)
 
-        # Ask about volume
-        rospy.loginfo("Asking volume...")
-        words, talk_time = robot.ask_question(questions_volume, speech_time=True, keyboard_mode=keyboard_mode)
-        send_talkativeness_evidence(words, talk_time, ev_talk)
-
-        # Process volume response in a loop until the user says they are happy with the volume.
-        if(re.search(re_no, words) or re.search(re_louder, words) or re.search(re_quieter, words)):
-            while not re.search(re_yes, words):
-                if(re.search(re_louder, words)):
-                    if current_volume < len(volume_steps)-1:
-                        current_volume += 1
-                        robot.change_volume(volume_steps[current_volume])
-                        robot.speak("Okay, I'll increase my volume a bit.", lang="en-EN")
-                    else:
-                        robot.speak("I'm sorry, I cannot increase the volume any further.", lang="en-EN")
-                elif(re.search(re_quieter, words)):
-                    if current_volume > 0:
-                        current_volume -= 1
-                        robot.change_volume(volume_steps[current_volume])
-                        robot.speak("Okay, I'll lower my volume a bit.", lang="en-EN")
-                    else:
-                        robot.speak("I'm sorry, I cannot lower the volume any further.", lang="en-EN")
-                elif(re.search(re_no, words)):
-                    words, talk_time = robot.ask_question("Should I be speaking louder or with a lower tone of voice?", speech_time=True, keyboard_mode=keyboard_mode)
+        # Ask about volume if we haven't already
+        if not asked_volume and (random.random() < 0.25 or len(questions) < 3):
+            # Ask about volume
+            rospy.loginfo("Asking volume...")
+            # Now we've asked volume
+            asked_volume = True
+            words, talk_time = robot.ask_question(questions_volume, speech_time=True, keyboard_mode=keyboard_mode)
+            send_talkativeness_evidence(words, talk_time, ev_talk)
+            # Process volume response in a loop until the user says they are happy with the volume.
+            if(re.search(re_no, words) or re.search(re_louder, words) or re.search(re_quieter, words)):
+                while not re.search(re_yes, words):
+                    if(re.search(re_louder, words)):
+                        if current_volume < len(volume_steps)-1:
+                            current_volume += 1
+                            robot.change_volume(volume_steps[current_volume])
+                            robot.speak("Okay, I'll increase my volume a bit.", lang="en-EN")
+                        else:
+                            robot.speak("I'm sorry, I cannot increase the volume any further.", lang="en-EN")
+                    elif(re.search(re_quieter, words)):
+                        if current_volume > 0:
+                            current_volume -= 1
+                            robot.change_volume(volume_steps[current_volume])
+                            robot.speak("Okay, I'll lower my volume a bit.", lang="en-EN")
+                        else:
+                            robot.speak("I'm sorry, I cannot lower the volume any further.", lang="en-EN")
+                    elif(re.search(re_no, words)):
+                        words, talk_time = robot.ask_question("Should I be speaking louder or with a lower tone of voice?", speech_time=True, keyboard_mode=keyboard_mode)
+                        send_talkativeness_evidence(words, talk_time, ev_talk)
+                        continue
+                    words, talk_time = robot.ask_question("Is the volume okay now?", speech_time=True, keyboard_mode=keyboard_mode)
                     send_talkativeness_evidence(words, talk_time, ev_talk)
-                    continue
-                words, talk_time = robot.ask_question("Is the volume okay now?", speech_time=True, keyboard_mode=keyboard_mode)
-                send_talkativeness_evidence(words, talk_time, ev_talk)
-        send_volume_tuple(current_volume)
+                    # Send tuple we got
+                    send_volume_tuple(current_volume)
+                robot.speak("Okay, I'll keep this volume.", lang="en-EN")
+            else:
+                # Send tuple we got
+                send_volume_tuple(current_volume)
+                robot.speak("Okay, I'll keep this volume.", lang="en-EN")
+            # ... and we skip to the next question
+            continue
 
-        # Ask about distance
-        rospy.loginfo("Asking distance...")
-        words, talk_time = robot.ask_question(questions_distance, speech_time=True, keyboard_mode=keyboard_mode)
-        send_talkativeness_evidence(words, talk_time, ev_talk)
-
-        # Process volume response in a loop until the user says they are happy with the volume.
-        if(re.search(re_no, words) or re.search(re_farther, words) or re.search(re_closer, words)):
-            while not re.search(re_yes, words):
-                if(re.search(re_farther, words)):
-                    if current_step < max_step-1:
-                        current_step += 1
-                        robot.step_forward(reverse=True)
-                        robot.speak("Okay, I'll get a bit farther from you.", lang="en-EN")
-                    else:
-                        robot.speak("I'm sorry, I cannot go further back.", lang="en-EN")
-                elif(re.search(re_closer, words)):
-                    if current_step > 0:
-                        current_step -= 1
-                        robot.step_forward()
-                        robot.speak("Okay, I'll get a bit closer to you.", lang="en-EN")
-                    else:
-                        robot.speak("I'm sorry, I cannot go further forward.", lang="en-EN")
-                elif(re.search(re_no, words)):
-                    words, talk_time = robot.ask_question("Should I be speaking closer or farther away from you?", speech_time=True, keyboard_mode=keyboard_mode)
+        # Ask about distance if we haven't already
+        if not asked_distance and (random.random() < 0.25 or len(questions) < 3):
+            # Ask about distance
+            rospy.loginfo("Asking distance...")
+            # Now we've asked distance
+            asked_distance = True
+            words, talk_time = robot.ask_question(questions_distance, speech_time=True, keyboard_mode=keyboard_mode)
+            send_talkativeness_evidence(words, talk_time, ev_talk)
+            # Process volume response in a loop until the user says they are happy with the volume.
+            if(re.search(re_no, words) or re.search(re_farther, words) or re.search(re_closer, words)):
+                while not re.search(re_yes, words):
+                    if(re.search(re_farther, words)):
+                        if current_step < max_step-1:
+                            current_step += 1
+                            robot.step_forward(reverse=True)
+                            robot.speak("Okay, I'll get a bit farther from you.", lang="en-EN")
+                        else:
+                            robot.speak("I'm sorry, I cannot go further back.", lang="en-EN")
+                    elif(re.search(re_closer, words)):
+                        if current_step > 0:
+                            current_step -= 1
+                            robot.step_forward()
+                            robot.speak("Okay, I'll get a bit closer to you.", lang="en-EN")
+                        else:
+                            robot.speak("I'm sorry, I cannot go further forward.", lang="en-EN")
+                    elif(re.search(re_no, words)):
+                        words, talk_time = robot.ask_question("Should I be speaking closer or farther away from you?", speech_time=True, keyboard_mode=keyboard_mode)
+                        send_talkativeness_evidence(words, talk_time, ev_talk)
+                        continue
+                    words, talk_time = robot.ask_question("Is the distance okay now?", speech_time=True, keyboard_mode=keyboard_mode)
                     send_talkativeness_evidence(words, talk_time, ev_talk)
-                    continue
-                words, talk_time = robot.ask_question("Is the distance okay now?", speech_time=True, keyboard_mode=keyboard_mode)
-                send_talkativeness_evidence(words, talk_time, ev_talk)
-        send_distance_tuple(current_step)
+                    # Send the tuple we got
+                    send_distance_tuple(current_step)
+                robot.speak("Okay, I'll keep this distance from you.", lang="en-EN")
+            else:
+                # Send the tuple we got
+                send_distance_tuple(current_step)
+                robot.speak("Okay, I'll keep this distance from you.", lang="en-EN")
+            # ... and we skip to the next question
+            continue
 
-    rospy.speak("I am done asking you questions now. Thank you for participating in this study.", lang="en-EN")
+    robot.speak("I am done asking you questions now. Thank you for participating in this study.", lang="en-EN")
    
