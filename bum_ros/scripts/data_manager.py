@@ -12,6 +12,8 @@ from __future__ import print_function
 
 # Standard Lib
 import yaml
+import os
+import random
 
 # ROS
 import rospy
@@ -22,7 +24,7 @@ GCD = None
 # TODO: Receive these as input
 ev_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"
 exec_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"
-gcd_filename = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/data_gathering.gcd"
+gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -90,16 +92,49 @@ def playback_evidence(filename):
     not, it is published as simple Evidence message.
 
     Messages are published 0.5 secs apart.
+
+    If a directory is passed instead of a file name, the function reads all
+    files in the directory and interleaves their playback.
     """
     rospy.loginfo("Playing back evidence")
 
-    # Read file
-    try:
-        with open(filename, 'r') as data_file:
-            in_data = yaml.load(data_file)
-    except IOError:
-        rospy.logerr("There was an error opening the log file.")
-        return
+    # Read file or directory
+    if os.path.isdir(filename):
+        # Inform
+        rospy.loginfo("Opening directory for playback.")
+        # Get a list of tiles
+        files = []
+        for (dirpath, dirnames, filenames) in os.walk(filename):
+            # Get files avoiding any ground truth that might be there
+            files.extend([f for f in filenames if "gt_log" not in f])
+        # Prepend the full path so we can open them later
+        files = [os.path.join(filename, f) for f in files]
+        # Read data from all files
+        data = []
+        for data_file_name in files:
+            with open(data_file_name, 'r') as data_file:
+                data.append(yaml.load(data_file))
+        # Interleave data
+        in_data = []
+        while data:
+            # Randomly select an input stream
+            idx = random.choice(range(len(data)))
+            # Get next record
+            in_data.append(data[idx].pop(0))
+            # Check if list should be destroyed
+            if not data[idx]:
+                data.pop(idx)
+        rospy.loginfo("Read {} data records from {} files.".format(len(in_data), len(files)))
+    else:
+        # Inform
+        rospy.loginfo("Opening file for playback.".format(filename))
+        # Read data from the file
+        try:
+            with open(filename, 'r') as data_file:
+                in_data = yaml.load(data_file)
+        except IOError:
+            rospy.logerr("There was an error opening the log file.")
+            return
 
     # Initialize publishers
     tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
@@ -195,6 +230,8 @@ if __name__=="__main__":
     # Initialize ROS node
     rospy.init_node('data_manager_node')
     rospy.loginfo("BUM Data Manager ROS node started!")
+
+    #playback_evidence("/home/vsantos/Desktop/bum_ros_data/")
 
     # Initialize subscribers
     rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
