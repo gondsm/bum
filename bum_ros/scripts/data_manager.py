@@ -70,7 +70,8 @@ def log_classification(evidence, identity, characteristic, char_id, entropy, fil
     data_dict["Evidence"] = evidence
     data_dict["Identity"] = identity
     data_dict["Entropy"] = entropy
-    data_dict[char_id] = characteristic
+    data_dict["C"] = dict()
+    data_dict["C"][char_id] = characteristic
     data.append(data_dict)
 
     # Write to file
