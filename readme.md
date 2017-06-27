@@ -85,7 +85,9 @@ This log file keeps a dictionary for each characteristic, mapping the user's ide
 
 This log file must be built by hand when data is gathered.
 
-# Testing Without ROS
+# Testing the System
+
+## Without ROS
 
 Basic testing does not require ROS at all, in fact you can just `cd` into the `bum_ros/scripts` folder and run 
 
@@ -99,9 +101,9 @@ to run the basic tests.
 
 The ProBT probabilistic computation package must be installed or manually added to the PYTHONPATH via a script similar to `prep_pypl_env.sh`.
 
-# Testing with ROS
+## With ROS
 
-## Simulation
+### Simulation
 
 For testing with ROS, the basic system can be started by running
 
@@ -115,7 +117,7 @@ rosrun bum_ros evaluator.py
 
 This starts the main nodes with the default GCD, and the system is ready to receive input.
 
-## With interaction
+### With interaction
 
 Once the main nodes are running, running with interaction on the GrowMeUp system is a matter of running
 
@@ -125,7 +127,7 @@ rosrun bum_ros_conductor bum_conductor.py
 
 this starts the interaction node, and the GrowMu robot should start speaking.
 
-## Data Gathering
+### Data Gathering
 
 For performing a data gathering run, you have to start the data manager:
 
@@ -141,11 +143,11 @@ rosrun bum_ros_conductor bum_conductor.py
 
 Naturally, you'll also need to start up any necessary drivers for the robot you are using prior to starting the system.
 
-## Testing different topologies
+### Testing different topologies
 
 *TODO*
 
-## Useful commands
+### Useful commands
 
 Useful command to publish evidence:
 
