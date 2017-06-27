@@ -16,10 +16,6 @@ import radar_chart_example as radar_chart
 
 GCD = None
 
-# TODO: Receive from input
-gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
-gt_log_file = "/home/vsantos/Desktop/bum_ros_data/gt_log.yaml"
-
 # Global object for maintaining the figure alive
 radar_fig = None
 
@@ -133,15 +129,20 @@ if __name__=="__main__":
     rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
     #rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
     
+    gcd_filename = ""
+    gt_log_file = ""
+
     # Get parameters
     try:
         gcd_filename = rospy.get_param("bum_ros/gcd_file")
     except KeyError:
-        rospy.logwarn("Could not get GCD file name parameter")
+        rospy.logfatal("Could not get GCD file name parameter")
+        exit()
     try:
         gt_log_file = rospy.get_param("bum_ros/gt_log_file")
     except KeyError:
-        rospy.logwarn("Could not get gt log file name parameter")
+        rospy.logfatal("Could not get gt log file name parameter")
+        exit()
 
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:

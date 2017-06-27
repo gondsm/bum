@@ -31,11 +31,12 @@ class BumRosNode:
         rospy.init_node('bum_ros_node')
 
         # Get GCD file from parameter
-        gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
+        gcd_filename = ""
         try:
             gcd_filename = rospy.get_param("bum_ros/gcd_file")
         except KeyError:
-            rospy.logwarn("Could not get GCD file name parameter")
+            rospy.logfatal("Could not get GCD file name parameter")
+            return
 
         # Read GDC file
         with open(gcd_filename, "r") as gdc_file:
