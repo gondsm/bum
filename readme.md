@@ -115,7 +115,7 @@ The `bum_ros` system depends on four parameters, indicating the filenames where 
 
 * `bum_ros/gt_log_file`: The path to the ground truth log that will be used for evaluation (`evaluator` only).
 
-* `bum_ros/operation_mode`: Can be either `playback` or `listen`, and defines the behaviour of the `data_manager`, namely its processing of the evidence log file/directory.
+* `bum_ros/operation_mode`: Can be either `playback`, `listen` or `dual`, and defines the behaviour of the `data_manager`, namely its processing of the evidence log file/directory. In `dual` mode, the system plays back evidence and records the execution of the system.
 
 These parameters can be set by running, for example:
 

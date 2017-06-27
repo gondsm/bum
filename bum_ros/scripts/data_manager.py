@@ -22,7 +22,7 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 GCD = None
 
 # Global variables with defaults, also read from parameters
-
+log_hard = True
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -199,7 +199,7 @@ def tuple_callback(msg):
     If a tuple is hard evidence, it is logged as evidence. If it is a soft
     tuple, it's logged as an execution."""
     # First we check whether we got hard evidence
-    if msg.hard == True:
+    if msg.hard == True and log_hard == True:
         # In this case, we log as evidence
         # Get evidence IDs from the GCD
         ev_dict = dict()
@@ -274,4 +274,10 @@ if __name__=="__main__":
         rospy.spin()
     elif operation == "playback":
         rospy.loginfo("Entering playback mode.")
+        playback_evidence(ev_log_file)
+    elif operation == "dual":
+        rospy.loginfo("Entering dual mode.")
+        # TODO: Improve
+        log_hard = False
+        rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
         playback_evidence(ev_log_file)
