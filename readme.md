@@ -103,6 +103,24 @@ The ProBT probabilistic computation package must be installed or manually added 
 
 ## With ROS
 
+### Parameters
+
+The `bum_ros` system depends on four parameters, indicating the filenames where all the logs, GCD and input data are saved:
+
+* `bum_ros/gcd_file`: The path to the GCD file.
+
+* `bum_ros/ev_log_file`: The path to the evidence log that will be saved from this run (`data_manager` only).
+
+* `bum_ros/exec_log_file`: The path to the execution log that will be saved from this run (`data_manager` only).
+
+* `bum_ros/gt_log_file`: The path to the ground truth log that will be used for evaluation (`evaluator` only).
+
+These parameters can be set by running, for example:
+
+```
+rosparam set /bum_ros/gcd_file "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
+```
+
 ### Simulation
 
 For testing with ROS, the basic system can be started by running
