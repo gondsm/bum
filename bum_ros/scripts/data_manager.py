@@ -25,7 +25,6 @@ GCD = None
 ev_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"
 exec_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"
 gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
-data_filename = "/home/vsantos/Desktop/bum_ros_data/"
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -153,6 +152,8 @@ def playback_evidence(filename):
 
     # For each entry in the log
     for record in in_data:
+        if rospy.is_shutdown():
+            break
         try:
             # If a characteristic is received, we publish as Tuple according to the GCD
             # Each different characteristic earns a different hard tuple publication
@@ -245,10 +246,6 @@ if __name__=="__main__":
         exec_log_file = rospy.get_param("bum_ros/exec_log_file")
     except KeyError:
         rospy.logwarn("Could not get exec log file name parameter")
-    try:
-        data_filename = rospy.get_param("bum_ros/data_file")
-    except KeyError:
-        rospy.logwarn("Could not get data file name parameter")
 
     # Get mode of operation from parameter
     operation = "listen"
@@ -262,13 +259,13 @@ if __name__=="__main__":
         GCD = yaml.load(gcd_file)
 
     # Start operating
-    if operation is "listen":
+    if operation == "listen":
         rospy.loginfo("Entering listening mode.")
         # Initialize subscribers
         rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
         rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
         # Let it spin
         rospy.spin()
-    elif operation is "playback":
+    elif operation == "playback":
         rospy.loginfo("Entering playback mode.")
         playback_evidence(ev_log_file)
