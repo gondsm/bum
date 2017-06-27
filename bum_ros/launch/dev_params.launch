@@ -1,0 +1,6 @@
+<launch>
+	<param name="bum_ros/gcd_file" value="/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"/>
+	<param name="bum_ros/ev_log_file" value="/home/vsantos/Desktop/bum_ros_data/"/>
+	<param name="bum_ros/exec_log_file" value="/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/exec_log-yaml"/>
+	<param name="bum_ros/operation_mode" value="playback"/>
+</launch>
