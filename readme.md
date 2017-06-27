@@ -109,11 +109,13 @@ The `bum_ros` system depends on four parameters, indicating the filenames where 
 
 * `bum_ros/gcd_file`: The path to the GCD file.
 
-* `bum_ros/ev_log_file`: The path to the evidence log that will be saved from this run (`data_manager` only).
+* `bum_ros/ev_log_file`: The path to the evidence log that will be saved from this run, or that will be played back (`data_manager` only). If this path is a directory, and the mode of operation is `playback`, the `data_manager` will play back all log files in the directory.
 
 * `bum_ros/exec_log_file`: The path to the execution log that will be saved from this run (`data_manager` only).
 
 * `bum_ros/gt_log_file`: The path to the ground truth log that will be used for evaluation (`evaluator` only).
+
+* `bum_ros/operation_mode`: Can be either `playback` or `listen`, and defines the behaviour of the `data_manager`, namely its processing of the evidence log file/directory.
 
 These parameters can be set by running, for example:
 

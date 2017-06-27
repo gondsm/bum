@@ -250,15 +250,25 @@ if __name__=="__main__":
     except KeyError:
         rospy.logwarn("Could not get data file name parameter")
 
-    #playback_evidence("/home/vsantos/Desktop/bum_ros_data/")
+    # Get mode of operation from parameter
+    operation = "listen"
+    try:
+        operation = rospy.get_param("bum_ros/operation_mode")
+    except KeyError:
+        rospy.logwarn("Could not get mode of operation parameter, defaulting to listening mode.")
 
-    # Initialize subscribers
-    rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
-    rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
-    
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:
         GCD = yaml.load(gcd_file)
 
-    # Let it spin
-    rospy.spin()
+    # Start operating
+    if operation is "listen":
+        rospy.loginfo("Entering listening mode.")
+        # Initialize subscribers
+        rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
+        rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
+        # Let it spin
+        rospy.spin()
+    elif operation is "playback":
+        rospy.loginfo("Entering playback mode.")
+        playback_evidence(ev_log_file)
