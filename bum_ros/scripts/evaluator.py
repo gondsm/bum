@@ -133,6 +133,16 @@ if __name__=="__main__":
     rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
     #rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
     
+    # Get parameters
+    try:
+        gcd_filename = rospy.get_param("/bum_ros/gcd_file")
+    except KeyError:
+        rospy.logwarn("Could not get GCD file name parameter")
+    try:
+        gt_log_file = rospy.get_param("/bum_ros/gt_log_file")
+    except KeyError:
+        rospy.logwarn("Could not get gt log file name parameter")
+
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:
         GCD = yaml.load(gcd_file)

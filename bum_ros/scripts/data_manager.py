@@ -21,10 +21,11 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 
 GCD = None
 
-# TODO: Receive these as input
+# Global variables with defaults, also read from parameters
 ev_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"
 exec_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"
 gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
+data_filename = "/home/vsantos/Desktop/bum_ros_data/"
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -230,6 +231,24 @@ if __name__=="__main__":
     # Initialize ROS node
     rospy.init_node('data_manager_node')
     rospy.loginfo("BUM Data Manager ROS node started!")
+
+    # Get file names from parameters
+    try:
+        gcd_filename = rospy.get_param("/bum_ros/gcd_file")
+    except KeyError:
+        rospy.logwarn("Could not get GCD file name parameter")
+    try:
+        ev_log_file = rospy.get_param("/bum_ros/ev_log_file")
+    except KeyError:
+        rospy.logwarn("Could not get evidence log file name parameter")
+    try:
+        exec_log_file = rospy.get_param("bum_ros/exec_log_file")
+    except KeyError:
+        rospy.logwarn("Could not get exec log file name parameter")
+    try:
+        data_filename = rospy.get_param("bum_ros/data_file")
+    except KeyError:
+        rospy.logwarn("Could not get data file name parameter")
 
     #playback_evidence("/home/vsantos/Desktop/bum_ros_data/")
 
