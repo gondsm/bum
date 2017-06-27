@@ -123,6 +123,8 @@ These parameters can be set by running, for example:
 rosparam set /bum_ros/gcd_file "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/data_gathering.gcd"
 ```
 
+Launch files are provided that can serve as examples for the definition of these parameters.
+
 ### Simulation
 
 For testing with ROS, the basic system can be started by running
