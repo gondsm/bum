@@ -234,11 +234,11 @@ if __name__=="__main__":
 
     # Get file names from parameters
     try:
-        gcd_filename = rospy.get_param("/bum_ros/gcd_file")
+        gcd_filename = rospy.get_param("bum_ros/gcd_file")
     except KeyError:
         rospy.logwarn("Could not get GCD file name parameter")
     try:
-        ev_log_file = rospy.get_param("/bum_ros/ev_log_file")
+        ev_log_file = rospy.get_param("bum_ros/ev_log_file")
     except KeyError:
         rospy.logwarn("Could not get evidence log file name parameter")
     try:

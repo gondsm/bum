@@ -135,11 +135,11 @@ if __name__=="__main__":
     
     # Get parameters
     try:
-        gcd_filename = rospy.get_param("/bum_ros/gcd_file")
+        gcd_filename = rospy.get_param("bum_ros/gcd_file")
     except KeyError:
         rospy.logwarn("Could not get GCD file name parameter")
     try:
-        gt_log_file = rospy.get_param("/bum_ros/gt_log_file")
+        gt_log_file = rospy.get_param("bum_ros/gt_log_file")
     except KeyError:
         rospy.logwarn("Could not get gt log file name parameter")
 

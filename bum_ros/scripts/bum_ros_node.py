@@ -33,7 +33,7 @@ class BumRosNode:
         # Get GCD file from parameter
         gcd_filename = "/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd"
         try:
-            gcd_filename = rospy.get_param("/bum_ros/gcd_file")
+            gcd_filename = rospy.get_param("bum_ros/gcd_file")
         except KeyError:
             rospy.logwarn("Could not get GCD file name parameter")
 
