@@ -6,6 +6,8 @@ from __future__ import print_function
 # Standard Lib
 import yaml
 import matplotlib.pyplot as plt
+import itertools
+import numpy as np
 
 # ROS
 import rospy
@@ -107,7 +109,6 @@ def plot_multi_user_run():
     #plt.xlim([0, len(error_vec)])
     plt.ylabel("Estimation Error")
 
-
     # Plot number of users
     plt.subplot(2,1,2)
     plt.plot(users_vec)
@@ -120,6 +121,53 @@ def plot_multi_user_run():
     plt.savefig("multi_user_run.pdf")
 
 
+def reset_population(population, gcd):
+    """ Resets user population back to a uniform distribution. 
+
+    This is done according to the GCD and the population generated is of the
+    form population["characteristic_id"] = {[evidence, identity]: characteristic_value}
+    meaning that there is a main entry for each characteristic, and within it
+    the values are contained in a dict for every combination of evidence and
+    identity (indexed as a single tuple).
+    """
+    for char in gcd["C"]:
+        # Create new dictionary for this characteristic
+        population[char] = dict()
+
+        # Create evidence structure for this variable
+        evidence_structure = []
+        for key in gcd["C"][char]["input"]:
+            evidence_structure.append(gcd["E"][key]["nclasses"])
+
+        # Initialize characteristics for all evidence combination
+        a = [range(0, elem) for elem in evidence_structure]
+        for i in range(gcd["nusers"]):
+            iterator = itertools.product(*a)
+            for comb in iterator:
+                population[char][comb + (i,)] = np.random.randint(0, gcd["C"][char]["nclasses"])
+
+
+def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
+    """ Analyses the exec_log and gt_log to produce figures of the execution in
+    time, like the ones we have for simulations. 
+    """
+    # Load external data
+    with open(exec_log_filename) as exec_log:
+        exec_data = yaml.load(exec_log)
+    with open(gt_log_filename) as gt_log:
+        gt_data = yaml.load(gt_log)
+    with open(gcd_filename) as gcd_file:
+        gcd = yaml.load(gcd_file)
+
+    # Empty population
+    population = dict()
+    reset_population(population, gcd)
+
+    # Iterate for all data points
+    for it_data in exec_data:
+        # W
+        pass
+
 if __name__=="__main__":
     # Initialize ROS node
     rospy.init_node('evaluator_node')
@@ -128,9 +176,10 @@ if __name__=="__main__":
     # Initialize subscribers
     rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
     #rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
-    
+
     gcd_filename = ""
     gt_log_file = ""
+    exec_log_file = ""
 
     # Get parameters
     try:
@@ -143,6 +192,11 @@ if __name__=="__main__":
     except KeyError:
         rospy.logfatal("Could not get gt log file name parameter")
         exit()
+    try:
+        exec_log_file = rospy.get_param("bum_ros/exec_log_file")
+    except KeyError:
+        rospy.logfatal("Could not get exec log file name parameter")
+        exit()
 
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:
@@ -151,13 +205,8 @@ if __name__=="__main__":
     for key in GCD["C"]:
         latest_char[key] = 0
 
-    #plot_single_user_run()
-    #plot_multi_user_run()
-    #exit()
+    iterative_evaluation(exec_log_file, gt_log_file, gcd_filename)
 
-    with open(gt_log_file, "r") as gt_log:
-        gt = yaml.load(gt_log)    
-    print(gt)
     exit()
 
     # Let her spin!
