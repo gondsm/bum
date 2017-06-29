@@ -130,6 +130,7 @@ def reset_population(population, gcd):
     the values are contained in a dict for every combination of evidence and
     identity (indexed as a single tuple).
     """
+    # Population is split by characteristics
     for char in gcd["C"]:
         # Create new dictionary for this characteristic
         population[char] = dict()
@@ -145,6 +146,36 @@ def reset_population(population, gcd):
             iterator = itertools.product(*a)
             for comb in iterator:
                 population[char][comb + (i,)] = np.random.randint(0, gcd["C"][char]["nclasses"])
+
+
+def calc_estimation_error(population, gt_data, gcd):
+    """ Given a population, a gcd and the ground truth, this function
+    calculates the total estimation error.
+
+    For now, we assume only characteristics that are fixed to the user,
+    independent of evidence.
+
+    TODO: Test if dict can be called by evidence. If so, compare for all
+    combinations. If not, assume that characteristic is fixed to the user.
+    """
+    # Initialize null error
+    error = 0
+
+    # Calculate error for each characteristic
+    for char in gcd["C"]:
+        # For each "item" in the population, i.e. each combination of evidence
+        # and identity.
+        for key, item in population[char].iteritems():
+            try:
+                # Calculate error by simple sum
+                error += abs(gt_data[char][key[-1]] - item)
+            except KeyError:
+                # We may not have ground truth for some users, and that is okay.
+                # TODO: Make this more robust
+                pass
+
+    # Return our total error
+    return error
 
 
 def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
@@ -163,10 +194,14 @@ def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
     population = dict()
     reset_population(population, gcd)
 
+    # Initialize error
+    error = []
+
     # Iterate for all data points
     for it_data in exec_data:
         # W
-        pass
+        error.append(calc_estimation_error(population, gt_data, gcd))
+
 
 if __name__=="__main__":
     # Initialize ROS node
