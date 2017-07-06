@@ -61,16 +61,12 @@ def tuple_callback(msg):
     latest_char[msg.char_id] = msg.characteristic
 
 
-def plot_single_user_run():
-    """ Plots a full run of the system with a single user. """
-    # Bogus data for now
-    error_vec = [10, 10, 10, 8, 8, 4, 4, 4, 4, 4, 3, 3, 2, 2, 2, 2, 2]
-    c_vec = [
-             [10, 10, 10, 10, 10, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-             [6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, 8, 8],
-             [2, 2, 2, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3]
-            ]
-
+def plot_single_user_run(error_vec, c_dict):
+    """ Plots a full run of the system with a single user.
+    error_vec is the timeseries of errors calculated, c_vec is a dict
+    of timeseries, one for each characteristic, indexed by characteristic
+    name.
+    """
     # Create figure
     fig = plt.figure()
 
@@ -78,47 +74,45 @@ def plot_single_user_run():
     plt.subplot(2,1,1)
     plt.plot(error_vec)
     plt.ylim([0, 1.1*max(error_vec)])
-    #plt.xlim([0, len(error_vec)])
+    plt.xlim([0, len(error_vec)-1])
     plt.ylabel("Estimation Error")
 
     # Plot characteristics
     plt.subplot(2,1,2)
     plt.hold(True)
-    for i, vec in enumerate(c_vec):
-        plt.plot(vec, label="C{}".format(i+1))
-    plt.ylim([0, 11])
+    for key in sorted(c_dict):
+        plt.plot(c_dict[key], label=key)
+    plt.ylim([0, 5])
+    plt.xlim([0, len(error_vec)-1])
     plt.legend()
     plt.ylabel("Characteristics")
     plt.xlabel("Iterations (k)")
 
     # Show/save plot
+    #plt.show()
     plt.savefig("single_user_run.pdf")
 
 
-def plot_multi_user_run():
+def plot_multi_user_run(error_vec, users_vec):
     """ Plots a full run with multiple users. """
-    # Bogus data for now
-    #error_vec = [89, 89, 89, 89, 81, 81, 81, 81, 81, 75, 75, 75, 75, 75, 75, 75, 62, 62, 62, 62, 62, 62, 62, 62, 50, 50, 50, 50, 43, 43, 43, 43, 43, 43, 34, 34, 34, 34, 34, 20, 20, 20, 20, 20, 20, 12, 12, 11, 12, 11, 10, 11, 12, 11, 10, 9, 7, 11, 9, 10, 9]
-    error_vec = [89, 89, 89, 89, 81, 81, 81, 81, 81, 75, 75, 75, 75, 75, 75, 75, 62, 62, 62, 62, 62, 62, 62, 62, 50, 50, 50, 50, 43, 43, 43, 43, 43, 43, 34, 34, 34, 34, 34, 20, 20, 20, 20, 20, 20, 20, 21, 19, 20, 18, 22, 21, 19, 22, 20, 20, 21, 19, 21, 20, 20]
-    users_vec = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]
-
     # Plot error
     plt.subplot(2,1,1)
     plt.plot(error_vec)
+    plt.xlim([0, len(error_vec)-1])
     plt.ylim([0, 1.1*max(error_vec)])
-    #plt.xlim([0, len(error_vec)])
     plt.ylabel("Estimation Error")
 
     # Plot number of users
     plt.subplot(2,1,2)
     plt.plot(users_vec)
+    plt.xlim([0, len(users_vec)-1])
     plt.ylim([0, 1.1*max(users_vec)])
     plt.ylabel("Number of Users")
     plt.xlabel("Iterations (K)")
 
     # Show/save plot
-    #plt.show()
-    plt.savefig("multi_user_run.pdf")
+    plt.show()
+    #plt.savefig("multi_user_run.pdf")
 
 
 def reset_population(population, gcd):
@@ -132,6 +126,9 @@ def reset_population(population, gcd):
     """
     # Population is split by characteristics
     for char in gcd["C"]:
+        # If a characteristic is not active, we do not touch it
+        if char not in gcd["Config"]["Active"]:
+            continue
         # Create new dictionary for this characteristic
         population[char] = dict()
 
@@ -148,12 +145,14 @@ def reset_population(population, gcd):
                 population[char][comb + (i,)] = np.random.randint(0, gcd["C"][char]["nclasses"])
 
 
-def calc_estimation_error(population, gt_data, gcd):
+def calc_estimation_error(population, gt_data, gcd, user_id=None):
     """ Given a population, a gcd and the ground truth, this function
     calculates the total estimation error.
 
     For now, we assume only characteristics that are fixed to the user,
     independent of evidence.
+
+    If user_id is received, the error is calculated for that single user.
 
     TODO: Test if dict can be called by evidence. If so, compare for all
     combinations. If not, assume that characteristic is fixed to the user.
@@ -161,11 +160,14 @@ def calc_estimation_error(population, gt_data, gcd):
     # Initialize null error
     error = 0
 
-    # Calculate error for each characteristic
-    for char in gcd["C"]:
+    # Calculate error for each active characteristic
+    for char in gcd["Config"]["Active"]:
         # For each "item" in the population, i.e. each combination of evidence
         # and identity.
         for key, item in population[char].iteritems():
+            # If we're calculating for a single ID, we ignore the rest
+            if user_id is not None and key[-1] != user_id:
+                continue
             try:
                 # Calculate error by simple sum
                 error += abs(gt_data[char][key[-1]] - item)
@@ -178,9 +180,12 @@ def calc_estimation_error(population, gt_data, gcd):
     return error
 
 
-def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
+def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename, user_id=None):
     """ Analyses the exec_log and gt_log to produce figures of the execution in
     time, like the ones we have for simulations. 
+
+    If user_id is set as an integer, this function will be run for a single
+    user only, producing a different plot.
     """
     # Load external data
     with open(exec_log_filename) as exec_log:
@@ -196,11 +201,48 @@ def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
 
     # Initialize error
     error = []
+    # Initialize a set of users
+    known_users = []
+    # Initialize the user counter (timeseries)
+    n_users = []
 
-    # Iterate for all data points
-    for it_data in exec_data:
-        # W
-        error.append(calc_estimation_error(population, gt_data, gcd))
+    if user_id is None:
+        # Iterate for all data points
+        for it_data in exec_data:
+            # Integrate new classification(s) into population
+            for char in it_data["C"]:
+                population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
+            if it_data["Identity"] not in known_users:
+                known_users.append(it_data["Identity"])
+            n_users.append(len(known_users))
+            # Update error
+            error.append(calc_estimation_error(population, gt_data, gcd))
+        # And plot
+        plot_multi_user_run(error, n_users)
+    else:
+        # Add our single user to the known users
+        known_users.append(user_id)
+        # Initialize characteristic history
+        char_history = dict()
+        # Iterate for all data points
+        for it_data in exec_data:
+            # Ignore data points not for our single user
+            if it_data["Identity"] != user_id:
+                continue
+            # Integrate new classification(s) into population
+            for char in it_data["C"]:
+                population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
+            # Get current characteristics from population
+            for char in ["C1", "C2"]:
+                try:
+                    char_history[char].append(population[char][(user_id,)])
+                except KeyError:
+                    char_history[char] = [population[char][(user_id,)]]
+            n_users.append(len(known_users))
+            # Update error
+            error.append(calc_estimation_error(population, gt_data, gcd, user_id))
+        # And plot
+        plot_single_user_run(error, char_history)
 
 
 if __name__=="__main__":
@@ -240,7 +282,8 @@ if __name__=="__main__":
     for key in GCD["C"]:
         latest_char[key] = 0
 
-    iterative_evaluation(exec_log_file, gt_log_file, gcd_filename)
+    #iterative_evaluation(exec_log_file, gt_log_file, gcd_filename)
+    iterative_evaluation(exec_log_file, gt_log_file, gcd_filename, user_id=1)
 
     exit()
 
