@@ -3,6 +3,13 @@ This script contains utilities, mainly used by the user_model_tests scripts to
 operate normally.
 """
 
+# Std lib
+import itertools
+import numpy as np
+
+# Scikit-learn
+from sklearn import mixture
+
 def generate_label(soft_label, entropy, evidence, identity, hard_label=None, combinations=None):
     """ This function receives the soft_label and entropy and the current
     evidence, and optionally a hard label.
@@ -57,8 +64,16 @@ def reset_population(population, gcd, user_ids=None):
         # If a characteristic is not active, we do not touch it
         if char not in gcd["Config"]["Active"]:
             continue
+        
         # Create new dictionary for this characteristic
-        population[char] = dict()
+        # We try to save previous data, but if we get no user ids we just
+        # blow everything up anyway.
+        try:
+            population[char]
+        except KeyError:
+            population[char] = dict()
+        if user_ids is None:
+            population[char] = dict()
 
         # Create evidence structure for this variable
         evidence_structure = []
