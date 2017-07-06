@@ -13,8 +13,12 @@ import numpy as np
 import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
 
+# Scikit-learn
+from sklearn import mixture
+
 # Custom
 import radar_chart_example as radar_chart
+import bum_utils as utils
 
 GCD = None
 
@@ -115,36 +119,6 @@ def plot_multi_user_run(error_vec, users_vec):
     #plt.savefig("multi_user_run.pdf")
 
 
-def reset_population(population, gcd):
-    """ Resets user population back to a uniform distribution. 
-
-    This is done according to the GCD and the population generated is of the
-    form population["characteristic_id"] = {[evidence, identity]: characteristic_value}
-    meaning that there is a main entry for each characteristic, and within it
-    the values are contained in a dict for every combination of evidence and
-    identity (indexed as a single tuple).
-    """
-    # Population is split by characteristics
-    for char in gcd["C"]:
-        # If a characteristic is not active, we do not touch it
-        if char not in gcd["Config"]["Active"]:
-            continue
-        # Create new dictionary for this characteristic
-        population[char] = dict()
-
-        # Create evidence structure for this variable
-        evidence_structure = []
-        for key in gcd["C"][char]["input"]:
-            evidence_structure.append(gcd["E"][key]["nclasses"])
-
-        # Initialize characteristics for all evidence combination
-        a = [range(0, elem) for elem in evidence_structure]
-        for i in range(gcd["nusers"]):
-            iterator = itertools.product(*a)
-            for comb in iterator:
-                population[char][comb + (i,)] = np.random.randint(0, gcd["C"][char]["nclasses"])
-
-
 def calc_estimation_error(population, gt_data, gcd, user_id=None):
     """ Given a population, a gcd and the ground truth, this function
     calculates the total estimation error.
@@ -197,7 +171,7 @@ def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename, user_
 
     # Empty population
     population = dict()
-    reset_population(population, gcd)
+    utils.reset_population(population, gcd)
 
     # Initialize error
     error = []
@@ -245,6 +219,48 @@ def iterative_evaluation(exec_log_filename, gt_log_filename, gcd_filename, user_
         plot_single_user_run(error, char_history)
 
 
+def fault_tolerance_evaluation(exec_log_filename, gt_log_filename, gcd_filename):
+    """ An iterative evaluation of the system's fault-tolerance, using a
+    clustering technique to get missing user characteristics.
+    """
+    # Load external data
+    with open(exec_log_filename) as exec_log:
+        exec_data = yaml.load(exec_log)
+    with open(gt_log_filename) as gt_log:
+        gt_data = yaml.load(gt_log)
+    with open(gcd_filename) as gcd_file:
+        gcd = yaml.load(gcd_file)
+
+    # Define two user populations
+    # Population 1 will be used for training, and population 2 will be used
+    # to test the system's fault-tolerance by determining all characteristics
+    # from the clusters obtained from the training population.
+    # TODO: Make this selection automatic
+    pop_1 = [1, 2, 5, 6, 7]
+    pop_2 = [3, 4]
+
+    # Empty population
+    population = dict()
+    utils.reset_population(population, gcd, pop_1)
+
+    # "Train" population from the exec_data we have
+    for it_data in exec_data:
+        if it_data["Identity"] not in pop_1:
+            continue
+        # Integrate new classification(s) into population
+        for char in it_data["C"]:
+            population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
+
+    # Cluster training population
+    means, cov = utils.cluster_population(population, gcd, num_clusters=1)
+
+    # Estimate missing characteristics
+
+
+    # Calculate error
+    calc_estimation_error(population, gt_data, gcd)
+
+
 if __name__=="__main__":
     # Initialize ROS node
     rospy.init_node('evaluator_node')
@@ -282,8 +298,10 @@ if __name__=="__main__":
     for key in GCD["C"]:
         latest_char[key] = 0
 
+    # Generate offline plots:
     #iterative_evaluation(exec_log_file, gt_log_file, gcd_filename)
-    iterative_evaluation(exec_log_file, gt_log_file, gcd_filename, user_id=1)
+    #iterative_evaluation(exec_log_file, gt_log_file, gcd_filename, user_id=1)
+    fault_tolerance_evaluation(exec_log_file, gt_log_file, gcd_filename)
 
     exit()
 
