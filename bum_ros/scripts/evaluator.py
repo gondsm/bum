@@ -13,9 +13,6 @@ import numpy as np
 import rospy
 from bum_ros.msg import Likelihood, Tuple, Evidence
 
-# Scikit-learn
-from sklearn import mixture
-
 # Custom
 import radar_chart_example as radar_chart
 import bum_utils as utils
@@ -115,8 +112,8 @@ def plot_multi_user_run(error_vec, users_vec):
     plt.xlabel("Iterations (K)")
 
     # Show/save plot
-    plt.show()
-    #plt.savefig("multi_user_run.pdf")
+    #plt.show()
+    plt.savefig("multi_user_run.pdf")
 
 
 def calc_estimation_error(population, gt_data, gcd, user_id=None):
@@ -236,30 +233,45 @@ def fault_tolerance_evaluation(exec_log_filename, gt_log_filename, gcd_filename)
     # to test the system's fault-tolerance by determining all characteristics
     # from the clusters obtained from the training population.
     # TODO: Make this selection automatic
-    pop_1 = [1, 2, 5, 6, 7]
-    pop_2 = [3, 4]
+    pop_1 = [1, 2, 3, 4, 5, 6, 7]
+    pop_2 = [pop_1.pop(3), pop_1.pop(4)]
+
+     # Initialize error
+    error = []
+    # Initialize a set of users
+    known_users = []
+    known_users.extend(pop_2)
+    # Initialize the user counter (timeseries)
+    n_users = []
 
     # Empty population
     population = dict()
-    utils.reset_population(population, gcd, pop_1)
+    utils.reset_population(population, gcd, pop_1+pop_2)
 
     # "Train" population from the exec_data we have
     for it_data in exec_data:
-        if it_data["Identity"] not in pop_1:
-            continue
-        # Integrate new classification(s) into population
-        for char in it_data["C"]:
-            population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
+        if it_data["Identity"] in pop_1:
+            # Add to known users
+            if it_data["Identity"] not in known_users:
+                known_users.append(it_data["Identity"])
+            # Integrate new classification(s) into population
+            for char in it_data["C"]:
+                population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
 
-    # Cluster training population
-    means, cov = utils.cluster_population(population, gcd, num_clusters=1)
+        # Cluster training population
+        means, cov = utils.cluster_population(population, gcd, num_clusters=1)
 
-    # Estimate missing characteristics
+        # Estimate missing characteristics
+        for user in pop_2:
+            for i, char in enumerate(gcd["Config"]["Active"]):
+                population[char][(user,)] = round(means[0][i])
+            
+        # Update metrics
+        n_users.append(len(known_users))
+        error.append(calc_estimation_error(population, gt_data, gcd))
 
-
-    # Calculate error
-    calc_estimation_error(population, gt_data, gcd)
-
+    # And plot
+    plot_multi_user_run(error, n_users)
 
 if __name__=="__main__":
     # Initialize ROS node
