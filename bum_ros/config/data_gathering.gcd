@@ -41,7 +41,7 @@ E:
   Et:
     nclasses: -1
   Ee:
-    nclasses: 6
+    nclasses: 7
 
 # Specify the number of users
 nusers: 10

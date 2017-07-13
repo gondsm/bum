@@ -10,9 +10,12 @@ import random
 import time
 import re
 import sys
+import threading
 
 # ROS
 import rospy
+
+# Custom
 from bum_ros.msg import Likelihood, Tuple, Evidence
 from conductor import gmu_functions as robot
 
@@ -44,6 +47,16 @@ questions_volume = ["Do you think I am speaking at the correct volume?"]
 
 # List of evidences of talkativeness gathered by the system
 ev_talk = []
+
+# Dictionary for mapping emotion names to codes
+emotion_dict = dict()
+emotion_dict["anger"] = 0
+emotion_dict["disgust"] = 1
+emotion_dict["fear"] = 2
+emotion_dict["happiness"] = 3
+emotion_dict["neutral"] = 4
+emotion_dict["sadness"] = 5
+emotion_dict["surprise"] = 6
 
 # Regexes for answer processing
 re_yes = ".*(yes|of course).*"
@@ -81,6 +94,25 @@ def send_talkativeness_evidence(words, talk_time, ev):
     evidence_pub.publish(evidence_msg)
 
 
+def send_emotion_evidence(emotion):
+    """ Sends a new emotion evidence to be recorded. Emotions are in the range
+    [0,6], corresponding to:
+    0: anger
+    1: disgust
+    2: fear
+    3: happiness
+    4: neutral
+    5: sadness
+    6: surprise
+    """
+    # Send emotion evidence
+    evidence_msg = Evidence()
+    evidence_msg.values = [emotion]
+    evidence_msg.evidence_ids = ["Ee"]
+    evidence_msg.user_id = 1
+    rospy.loginfo("Publishing new emotion evidence.")
+    evidence_pub.publish(evidence_msg)
+
 def send_volume_tuple(val):
     """ Sends a volume tuple of value val. """
     tuple_msg = Tuple()
@@ -109,12 +141,27 @@ def send_distance_tuple(val):
     tuple_pub.publish(tuple_msg)
 
 
+def emotion_worker():
+    print("Thread starting!")
+    r = rospy.Rate(1)
+    while not rospy.is_shutdown():
+        emotion = robot.get_user_emotion()
+        if emotion is not None:
+            emotion_code = emotion_dict[emotion]
+            send_emotion_evidence(emotion_code)
+        r.sleep()
+
+
 if __name__ == "__main__":
     # Initialize ROS node
     rospy.init_node('bum_ros_conductor')
 
     # Initialze the robot's functions
     robot.init_functions()
+
+    # Start emotion Thread
+    t = threading.Thread(target=emotion_worker)
+    t.start()
 
     # Gather ground truth
     if len(sys.argv) > 1 and sys.argv[1] == "gt":
