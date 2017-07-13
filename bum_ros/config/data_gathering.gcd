@@ -23,6 +23,7 @@ C:
 # EtX: the number of words per minute spoken by the user
 # Ew: the words spoken by the user
 # Et: unix timestamp at which the evidence was published
+# Ee: facial emotion of the user
 # nclasses = -1 means that the variables are continuous or otherwise not classes
 E:
   Et0:
@@ -35,10 +36,12 @@ E:
     nclasses: 20
   Et4:
     nclasses: 20
-  Ew:
-    nclasses: -1
+  #Ew:
+  #  nclasses: -1
   Et:
     nclasses: -1
+  Ee:
+    nclasses: 6
 
 # Specify the number of users
 nusers: 10
