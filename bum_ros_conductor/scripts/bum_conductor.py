@@ -34,6 +34,10 @@ questions = ["What can you tell me about your day?",
              "What are your favourite hobbies?",
              "How is your research going? Are you getting good results?",
              "Did you study electrical engineering? What did you like the most about it?",
+             "Do you like working with your colleagues? Do you like the environment at your work?",
+             "Have you ever supervised any students? What was it like?",
+             "I hate repeating myself. Have you ever had to repeat any experiments, or do your experiments go well on the first try?",
+             "Are you a researcher? What is your field of research?",
              "Being a robot, I feel thunderstorms very personally. How do you feel about the weather we have been having lately?"]
 questions_distance = ["Do you think I am speaking to you at the correct distance?"]
 questions_volume = ["Do you think I am speaking at the correct volume?"]
