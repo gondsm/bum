@@ -25,10 +25,18 @@ class BumRosNode:
     and so on. It responds to a number of ROS topics according to the
     design of the BUM system.
     """
-    def __init__(self, gcd_filename):
+    def __init__(self):
         """ Initializes the ROS node and the estimators specified in the GCD. """
         # Initialize ROS node
         rospy.init_node('bum_ros_node')
+
+        # Get GCD file from parameter
+        gcd_filename = ""
+        try:
+            gcd_filename = rospy.get_param("bum_ros/gcd_file")
+        except KeyError:
+            rospy.logfatal("Could not get GCD file name parameter")
+            return
 
         # Read GDC file
         with open(gcd_filename, "r") as gdc_file:
@@ -157,7 +165,7 @@ class BumRosNode:
 
 if __name__=="__main__":
     # Initialize object (with a sample file for now)
-    b = BumRosNode("/home/vsantos/catkin_ws/src/bum_ros/bum_ros/config/caracteristics.gcd")
+    b = BumRosNode()
 
     # Let it do its thing
     b.run()

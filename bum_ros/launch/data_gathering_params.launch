@@ -1,0 +1,6 @@
+<launch>
+	<param name="bum_ros/gcd_file" value="/home/growmeup/catkin_ws/src/user_model/bum_ros/config/data_gathering.gcd"/>
+	<param name="bum_ros/ev_log_file" value="/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"/>
+	<param name="bum_ros/exec_log_file" value="/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"/>
+	<param name="bum_ros/operation_mode" value="listen"/>
+</launch>

@@ -12,6 +12,8 @@ from __future__ import print_function
 
 # Standard Lib
 import yaml
+import os
+import random
 
 # ROS
 import rospy
@@ -19,10 +21,8 @@ from bum_ros.msg import Likelihood, Tuple, Evidence
 
 GCD = None
 
-# TODO: Receive these as input
-ev_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/ev_log.yaml"
-exec_log_file = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/exec_log.yaml"
-gcd_filename = "/home/growmeup/catkin_ws/src/user_model/bum_ros/config/data_gathering.gcd"
+# Global variables with defaults, also read from parameters
+log_hard = True
 
 def log_evidence(evidence, identity, characteristic, char_id, filename):
     """ This function adds a new record to the evidence log. 
@@ -70,7 +70,8 @@ def log_classification(evidence, identity, characteristic, char_id, entropy, fil
     data_dict["Evidence"] = evidence
     data_dict["Identity"] = identity
     data_dict["Entropy"] = entropy
-    data_dict[char_id] = characteristic
+    data_dict["C"] = dict()
+    data_dict["C"][char_id] = characteristic
     data.append(data_dict)
 
     # Write to file
@@ -89,16 +90,49 @@ def playback_evidence(filename):
     not, it is published as simple Evidence message.
 
     Messages are published 0.5 secs apart.
+
+    If a directory is passed instead of a file name, the function reads all
+    files in the directory and interleaves their playback.
     """
     rospy.loginfo("Playing back evidence")
 
-    # Read file
-    try:
-        with open(filename, 'r') as data_file:
-            in_data = yaml.load(data_file)
-    except IOError:
-        rospy.logerr("There was an error opening the log file.")
-        return
+    # Read file or directory
+    if os.path.isdir(filename):
+        # Inform
+        rospy.loginfo("Opening directory for playback.")
+        # Get a list of tiles
+        files = []
+        for (dirpath, dirnames, filenames) in os.walk(filename):
+            # Get files avoiding any ground truth that might be there
+            files.extend([f for f in filenames if "gt_log" not in f])
+        # Prepend the full path so we can open them later
+        files = [os.path.join(filename, f) for f in files]
+        # Read data from all files
+        data = []
+        for data_file_name in files:
+            with open(data_file_name, 'r') as data_file:
+                data.append(yaml.load(data_file))
+        # Interleave data
+        in_data = []
+        while data:
+            # Randomly select an input stream
+            idx = random.choice(range(len(data)))
+            # Get next record
+            in_data.append(data[idx].pop(0))
+            # Check if list should be destroyed
+            if not data[idx]:
+                data.pop(idx)
+        rospy.loginfo("Read {} data records from {} files.".format(len(in_data), len(files)))
+    else:
+        # Inform
+        rospy.loginfo("Opening file for playback.".format(filename))
+        # Read data from the file
+        try:
+            with open(filename, 'r') as data_file:
+                in_data = yaml.load(data_file)
+        except IOError:
+            rospy.logerr("There was an error opening the log file.")
+            return
 
     # Initialize publishers
     tuple_pub = rospy.Publisher('bum/tuple', Tuple, queue_size=10)
@@ -116,6 +150,8 @@ def playback_evidence(filename):
 
     # For each entry in the log
     for record in in_data:
+        if rospy.is_shutdown():
+            break
         try:
             # If a characteristic is received, we publish as Tuple according to the GCD
             # Each different characteristic earns a different hard tuple publication
@@ -163,7 +199,7 @@ def tuple_callback(msg):
     If a tuple is hard evidence, it is logged as evidence. If it is a soft
     tuple, it's logged as an execution."""
     # First we check whether we got hard evidence
-    if msg.hard == True:
+    if msg.hard == True and log_hard == True:
         # In this case, we log as evidence
         # Get evidence IDs from the GCD
         ev_dict = dict()
@@ -195,13 +231,53 @@ if __name__=="__main__":
     rospy.init_node('data_manager_node')
     rospy.loginfo("BUM Data Manager ROS node started!")
 
-    # Initialize subscribers
-    rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
-    rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
-    
+    # Allocate variables
+    ev_log_file = ""
+    exec_log_file = ""
+    gcd_filename = ""
+    operation = "listen"
+
+    # Get file names from parameters
+    try:
+        gcd_filename = rospy.get_param("bum_ros/gcd_file")
+    except KeyError:
+        rospy.logfatal("Could not get GCD file name parameter")
+        exit()
+    try:
+        ev_log_file = rospy.get_param("bum_ros/ev_log_file")
+    except KeyError:
+        rospy.logfatal("Could not get evidence log file name parameter")
+        exit()
+    try:
+        exec_log_file = rospy.get_param("bum_ros/exec_log_file")
+    except KeyError:
+        rospy.logfatal("Could not get exec log file name parameter")
+        exit()
+
+    # Get mode of operation from parameter
+    try:
+        operation = rospy.get_param("bum_ros/operation_mode")
+    except KeyError:
+        rospy.logwarn("Could not get mode of operation parameter, defaulting to listening mode.")
+
     # Read GCD file
     with open(gcd_filename, "r") as gcd_file:
         GCD = yaml.load(gcd_file)
 
-    # Let it spin
-    rospy.spin()
+    # Start operating
+    if operation == "listen":
+        rospy.loginfo("Entering listening mode.")
+        # Initialize subscribers
+        rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
+        rospy.Subscriber("bum/evidence", Evidence, evidence_callback)
+        # Let it spin
+        rospy.spin()
+    elif operation == "playback":
+        rospy.loginfo("Entering playback mode.")
+        playback_evidence(ev_log_file)
+    elif operation == "dual":
+        rospy.loginfo("Entering dual mode.")
+        # TODO: Improve
+        log_hard = False
+        rospy.Subscriber("bum/tuple", Tuple, tuple_callback)
+        playback_evidence(ev_log_file)

@@ -136,7 +136,7 @@ def cluster_population(population, evidence, return_gmm=False, num_clusters=2):
     # Retrieve users
     user_vectors = []
     for i in range(NUMBER_OF_USERS):
-        vec = population[tuple(evidence + [i+1])]
+        vec = population[tuple(evidence + [i])]
         while len(vec) < 3:
             vec.append(1)
         user_vectors.append(vec)
@@ -181,7 +181,7 @@ def plot_population(population, evidence, filename=None, title=None):
     # Retrieve users
     user_vectors = []
     for i in range(NUMBER_OF_USERS):
-        vec = population[tuple(evidence + [i+1])]
+        vec = population[tuple(evidence + [i])]
         while len(vec) < 3:
             vec.append(1)
         user_vectors.append(vec)
@@ -203,7 +203,7 @@ def plot_population(population, evidence, filename=None, title=None):
     plt.hold(True)
     for i, user in enumerate(user_vectors):
         # Point
-        ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i+1))
+        ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i))
     if filename is None:
         plt.show()
     else:
@@ -471,7 +471,7 @@ def fault_tolerance_test(pickle_file="results_fault.pickle"):
         os.system('clear')
         print("Running first iterations until convergence.")
         print("I'm going to save results in {}.".format(pickle_file))
-        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        print("Iteration {} of {}.".format(i, NUMBER_OF_ITERATIONS))
         if i > 0:
             print("Previous accuracy: {}.".format(accuracy[-1][0]))
             print("Previous total error: {}".format(error[-1][0]))
@@ -512,7 +512,7 @@ def fault_tolerance_test(pickle_file="results_fault.pickle"):
         os.system('clear')
         print("Running after first fault.")
         print("I'm going to save results in {}.".format(pickle_file))
-        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        print("Iteration {} of {}.".format(i, NUMBER_OF_ITERATIONS))
         if i > 0:
             print("Previous accuracy: {}.".format(accuracy[-1][0]))
             print("Previous total error: {}".format(error[-1][0]))
@@ -568,7 +568,7 @@ def fault_tolerance_test(pickle_file="results_fault.pickle"):
         os.system('clear')
         print("Running after adding a new population.")
         print("I'm going to save results in {}.".format(pickle_file))
-        print("Iteration {} of {}.".format(i+1, NUMBER_OF_ITERATIONS))
+        print("Iteration {} of {}.".format(i, NUMBER_OF_ITERATIONS))
         if i > 0:
             print("Previous accuracy: {}.".format(accuracy[-1][0]))
             print("Previous total error: {}".format(error[-1][0]))
@@ -645,7 +645,7 @@ def iterative_test(pickle_file="results.pickle", clustering=True, plot_clusters=
 
     # Initialize population
     # Build the ranges for all evidence and create an iterator
-    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
+    a = [range(1, elem) for elem in EVIDENCE_STRUCTURE]
 
     # Initialize characteristics for all evidence combination
     # for i in range(NUMBER_OF_USERS):
@@ -792,13 +792,13 @@ def reset_population(population=user_characteristics):
     """ This function resets the global population back to uniformity. """
     # Initialize population
     # Build the ranges for all evidence and create an iterator
-    a = [range(1, elem+1) for elem in EVIDENCE_STRUCTURE]
+    a = [range(0, elem) for elem in EVIDENCE_STRUCTURE]
 
     # Initialize characteristics for all evidence combination
     for i in range(NUMBER_OF_USERS):
         iterator = itertools.product(*a)
         for comb in iterator:
-            population[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in CHARACTERISTICS_STRUCTURE]
+            population[comb + (i,)] = [np.random.randint(0, elem) for elem in CHARACTERISTICS_STRUCTURE]
 
 
 def debug():

@@ -59,9 +59,9 @@ class characteristic_model:
         initial likelihoods.
         """
         # Define Variables
-        self._C_1 = probt.plVariable("C_1", probt.plIntegerType(1, output_classes))
-        self._I = probt.plVariable("I", probt.plIntegerType(1, number_of_users))
-        input_variables = [probt.plVariable("E_{}".format(i), probt.plIntegerType(1, input_classes[i])) for i in range(len(input_classes))]
+        self._C_1 = probt.plVariable("C_1", probt.plIntegerType(0, output_classes-1))
+        self._I = probt.plVariable("I", probt.plIntegerType(0, number_of_users-1))
+        input_variables = [probt.plVariable("E_{}".format(i), probt.plIntegerType(0, input_classes[i]-1)) for i in range(len(input_classes))]
         input_variables.append(self._I)
         self._input_variables = probt.plVariablesConjunction(input_variables)
 
@@ -69,7 +69,7 @@ class characteristic_model:
         self._P_E_given_C_1 = probt.plDistributionTable(self._input_variables, self._C_1)
         values = probt.plValues(self._input_variables ^ self._C_1)
         for i in range(output_classes):
-            values[self._C_1] = i+1    
+            values[self._C_1] = i  
             self._P_E_given_C_1.push(probt.plUniform(self._input_variables), values)
 
         # Generate prior (don't worry, probt normalizes it for us)
@@ -100,7 +100,7 @@ class characteristic_model:
         # Instantiate/Compile into resulting distribution
         result = P_C_1_given_E.compile().instantiate(evidence_vals)
         result_class = result.n_best(1)[0].to_int()
-        result_prob = result.tabulate()[1][result_class-1]
+        result_prob = result.tabulate()[1][result_class]
         entropy = result.compute_shannon_entropy()
         entropy = 0.1 if entropy < 0.1 else entropy
 
@@ -213,26 +213,26 @@ class population_simulator:
     def __generate_uniform_population(self):
         """ Generates a population without set profiles using uniform distributions. """
         # Build the ranges for all evidence and create an iterator
-        a = [range(1, elem+1) for elem in self._evidence_structure]
+        a = [range(0, elem) for elem in self._evidence_structure]
 
         # Initialize characteristics for all evidence combination
         for i in range(self._number_of_users):
             iterator = itertools.product(*a)
             for comb in iterator:
-                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in self._characteristics_structure]
+                self._users[comb + (i,)] = [np.random.randint(0, elem) for elem in self._characteristics_structure]
 
 
     def __generate_from_profiles(self):
         """ Generates a population from a set of given profiles. """
         #print("Generating guys from profiles", profiles)
         # Build the ranges for all evidence and create an iterator
-        a = [range(1, elem+1) for elem in self._evidence_structure]
+        a = [range(0, elem) for elem in self._evidence_structure]
 
         # Initialize characteristics for all evidence combination uniformly
         for i in range(self._number_of_users):
             iterator = itertools.product(*a)
             for comb in iterator:
-                self._users[comb + (i+1,)] = [np.random.randint(1, elem+1) for elem in self._characteristics_structure]
+                self._users[comb + (i,)] = [np.random.randint(1, elem) for elem in self._characteristics_structure]
         
         # Re-initialize some evidence according to the profiles
         for key in self._profiles:
@@ -252,7 +252,7 @@ class population_simulator:
                 #print(charac)
 
                 # Put into user population
-                self._users[key + (i+1,)] = charac
+                self._users[key + (i,)] = charac
 
 
     def generate(self, user=None):
@@ -261,11 +261,11 @@ class population_simulator:
         If a user ID is received, it is used to retrieve evidence from that user.
         """
         # Generate evidence
-        evidence = [np.random.randint(1, elem+1) for elem in self._evidence_structure]
+        evidence = [np.random.randint(0, elem) for elem in self._evidence_structure]
         if user is not None:
             evidence.append(user)
         else:
-            evidence.append(np.random.randint(1, self._number_of_users+1))
+            evidence.append(np.random.randint(0, self._number_of_users))
 
         # Retrieve characteristics
         characteristics = self._users[tuple(evidence)]
