@@ -66,10 +66,11 @@ def send_talkativeness_evidence(words, talk_time, ev):
     new_ev = int((19/5)*new_ev)
     ev.append(new_ev)
     evidence_msg = Evidence()
-    evidence_msg.values = ev
+    evidence_msg.values = ev[:]
     #evidence_msg.values.append(words)
+    evidence_msg.values.append(int(time.time()))
     evidence_msg.evidence_ids = ["Et{}".format(i) for i in reversed(range(len(ev)))]
-    #evidence_msg.evidence_ids.append("W")
+    evidence_msg.evidence_ids.append("Et")
     evidence_msg.user_id = 1
     rospy.loginfo("Publishing new talkativeness evidence.")
     #rospy.loginfo(evidence_msg)
