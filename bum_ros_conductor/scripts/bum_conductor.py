@@ -143,14 +143,14 @@ if __name__ == "__main__":
     robot.speak("Hello. We will now start a short interaction. Please answer my questions as you see fit.", lang="en-EN")
 
     # Loop over all questions
-    while questions:
+    for i in range(5):
         # Ask a question and receive answer
         rospy.loginfo("Asking a generic question...")
         words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
         send_talkativeness_evidence(words, talk_time, ev_talk)
 
         # Ask about volume if we haven't already
-        if not asked_volume and (random.random() < 0.25 or len(questions) < 3):
+        if not asked_volume and (random.random() < 0.25 or i > 3):
             # Ask about volume
             rospy.loginfo("Asking volume...")
             # Now we've asked volume
@@ -191,7 +191,7 @@ if __name__ == "__main__":
             continue
 
         # Ask about distance if we haven't already
-        if not asked_distance and (random.random() < 0.25 or len(questions) < 3):
+        if not asked_distance and (random.random() < 0.25 or i > 3):
             # Ask about distance
             rospy.loginfo("Asking distance...")
             # Now we've asked distance
