@@ -26,10 +26,10 @@ keyboard_mode = True
 
 # The volume steps we'll cycle through
 volume_steps = [40, 50, 60, 70, 75]
-current_volume = 2 # Starts in the middle of the scale
+current_volume = 4 # Starts loud
 
 # Variables for controlling the robot's "steps"
-current_step = 2 # The robot will start in the middle
+current_step = 4 # The robot will far away
 max_step = 4 # of a scale going from 0 to 4
 
 # The list of questions to be used in this test
@@ -108,7 +108,8 @@ def send_emotion_evidence(emotion):
     # Send emotion evidence
     evidence_msg = Evidence()
     evidence_msg.values = [emotion]
-    evidence_msg.evidence_ids = ["Ee"]
+    evidence_msg.values.append(int(time.time()))
+    evidence_msg.evidence_ids = ["Ee", "Et"]
     evidence_msg.user_id = 1
     rospy.loginfo("Publishing new emotion evidence.")
     evidence_pub.publish(evidence_msg)
