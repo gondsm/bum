@@ -137,7 +137,7 @@ if __name__ == "__main__":
     robot.change_volume(volume_steps[current_volume])
 
     # Loop over all questions
-    while questions:
+    for i in range(6):
         # Ask a question and receive answer
         rospy.loginfo("Asking a generic question...")
         questions.pop(0)
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         #send_talkativeness_evidence(words, talk_time, ev_talk)
 
         # Ask about volume if we haven't already
-        if not asked_volume and (random.random() < 0.25 or len(questions) < 3):
+        if not asked_volume and (random.random() < 0.25 or i > 3):
             # Ask about volume
             rospy.loginfo("Asking volume...")
             # Now we've asked volume
@@ -186,7 +186,7 @@ if __name__ == "__main__":
             continue
 
         # Ask about distance if we haven't already
-        if not asked_distance and (random.random() < 0.25 or len(questions) < 3):
+        if not asked_distance and (random.random() < 0.25 or i > 3):
             # Ask about distance
             rospy.loginfo("Asking distance...")
             # Now we've asked distance
