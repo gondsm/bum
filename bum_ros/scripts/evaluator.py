@@ -8,6 +8,7 @@ import yaml
 import matplotlib.pyplot as plt
 import itertools
 import numpy as np
+from pprint import pprint
 
 # ROS
 import rospy
@@ -61,6 +62,61 @@ def tuple_callback(msg):
     """ Responsible for processing new tuples, adds them to the latest characteristics. """
     latest_char[msg.char_id] = msg.characteristic
 
+
+def plot_natural_error(exec_log_filename, gt_log_filename, gcd_filename):
+    """ This function produces a bar chart with the differences between
+    the self-acessment of each user and the hard evidence gathered about
+    them.
+    """
+    # Load external data
+    with open(exec_log_filename) as exec_log:
+        exec_data = yaml.load(exec_log)
+    with open(gt_log_filename) as gt_log:
+        gt_data = yaml.load(gt_log)
+    with open(gcd_filename) as gcd_file:
+        gcd = yaml.load(gcd_file)
+
+    # Empty population
+    population = dict()
+    utils.reset_population(population, gcd)
+
+    # "train" population
+    for it_data in exec_data:
+        # Integrate new classification(s) into population
+        for char in it_data["C"]:
+            population[char][tuple(it_data["Evidence"]) + (it_data["Identity"],)] = it_data["C"][char]
+
+    # Calculate "natural" errors, i.e. discrepancies between hard evidence and
+    # the user's self-assessment
+    errors = dict()
+    for char in gcd["Config"]["Active"]:
+        errors[char] = []
+        for user in gt_data[char]:
+            errors[char].append(abs(gt_data[char][user]-population[char][(user,)]))
+
+    # Plot bar chart
+    f = plt.figure(figsize=[6,3])
+    nbars = len(errors)
+    indices = np.arange(1, len(errors[errors.keys()[0]])+1)
+    xticks = [str(a) for a in indices]
+    colors = itertools.cycle(["b", "g", "r"])
+    width = 0.8/nbars
+    for i, key in enumerate(sorted(errors)):
+        plt.bar(indices-nbars*width/2+i*width, errors[key], width, label=key, color= next(colors))
+    plt.xticks(indices,xticks)
+    plt.yticks(range(4), range(4))
+    plt.xlim([0, len(indices)+1])
+    plt.ylim([0, 3])
+    plt.xlabel("Users")
+    plt.ylabel("Discrepancy")
+    plt.tight_layout()
+
+    # Show legend
+    plt.legend()
+
+    # Show/save plot
+    #plt.show()
+    plt.savefig("natural_error.pdf")
 
 def plot_single_user_run(error_vec, c_dict):
     """ Plots a full run of the system with a single user.
@@ -313,7 +369,8 @@ if __name__=="__main__":
     # Generate offline plots:
     #iterative_evaluation(exec_log_file, gt_log_file, gcd_filename)
     #iterative_evaluation(exec_log_file, gt_log_file, gcd_filename, user_id=1)
-    fault_tolerance_evaluation(exec_log_file, gt_log_file, gcd_filename)
+    #fault_tolerance_evaluation(exec_log_file, gt_log_file, gcd_filename)
+    plot_natural_error(exec_log_file, gt_log_file, gcd_filename)
 
     exit()
 
