@@ -53,7 +53,7 @@ from bum_utils import *
 NUMBER_OF_USERS = 60
 # How many different values are in each evidence variable:
 # (implicitly defines the name and number of evidence variables)
-EVIDENCE_STRUCTURE = [3, 3]
+EVIDENCE_STRUCTURE = [5, 5]
 # How many different values are in the output variables:
 # (implicitly defined the name and number of output variables)
 CHARACTERISTICS_STRUCTURE = [10, 10, 10]
