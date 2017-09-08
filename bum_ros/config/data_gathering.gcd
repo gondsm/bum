@@ -13,9 +13,9 @@ C:
     input:
       - Et0
       - Et1
-      - Et2
-      - Et3
-      - Et4
+      #- Et2
+      #- Et3
+      #- Et4
     nclasses: 10
     description: "The user's talkativeness level"
 
@@ -42,11 +42,11 @@ Config:
   Active:
     - C1
     - C2
-    - C3
+    #- C3
   # Will this node fuse tuples?
   Fusion: True
   # Will it only fuse hard evidence?
-  Only_fuse_hard: False
+  Only_fuse_hard: True
   # Will tuples be published whenever a new prediction is made?
   Publish_on_predict: True
 
