@@ -10,9 +10,12 @@ import random
 import time
 import re
 import sys
+import threading
 
 # ROS
 import rospy
+
+# Custom
 from bum_ros.msg import Likelihood, Tuple, Evidence
 from conductor import gmu_functions as robot
 
@@ -23,10 +26,10 @@ keyboard_mode = True
 
 # The volume steps we'll cycle through
 volume_steps = [40, 50, 60, 70, 75]
-current_volume = 2 # Starts in the middle of the scale
+current_volume = 4 # Starts loud
 
 # Variables for controlling the robot's "steps"
-current_step = 2 # The robot will start in the middle
+current_step = 4 # The robot will far away
 max_step = 4 # of a scale going from 0 to 4
 
 # The list of questions to be used in this test
@@ -34,6 +37,10 @@ questions = ["What can you tell me about your day?",
              "What are your favourite hobbies?",
              "How is your research going? Are you getting good results?",
              "Did you study electrical engineering? What did you like the most about it?",
+             "Do you like working with your colleagues? Do you like the environment at your work?",
+             "Have you ever supervised any students? What was it like?",
+             "I hate repeating myself. Have you ever had to repeat any experiments, or do your experiments go well on the first try?",
+             "Are you a researcher? What is your field of research?",
              "Being a robot, I feel thunderstorms very personally. How do you feel about the weather we have been having lately?"]
 questions_distance = ["Do you think I am speaking to you at the correct distance?"]
 questions_volume = ["Do you think I am speaking at the correct volume?"]
@@ -41,13 +48,23 @@ questions_volume = ["Do you think I am speaking at the correct volume?"]
 # List of evidences of talkativeness gathered by the system
 ev_talk = []
 
+# Dictionary for mapping emotion names to codes
+emotion_dict = dict()
+emotion_dict["anger"] = 0
+emotion_dict["disgust"] = 1
+emotion_dict["fear"] = 2
+emotion_dict["happiness"] = 3
+emotion_dict["neutral"] = 4
+emotion_dict["sadness"] = 5
+emotion_dict["surprise"] = 6
+
 # Regexes for answer processing
 re_yes = ".*(yes|of course).*"
 re_no = ".*(no|not).*"
 re_louder = ".*(high|loud).*"
 re_quieter = ".*(quiet|low).*"
 re_closer = ".*(close|near).*"
-re_farther = ".*(away|far).*"
+re_farther = ".*(away|far|further).*"
 
 # Have we already asked about volume and distance?
 asked_distance = False
@@ -66,13 +83,36 @@ def send_talkativeness_evidence(words, talk_time, ev):
     new_ev = int((19/5)*new_ev)
     ev.append(new_ev)
     evidence_msg = Evidence()
-    evidence_msg.values = ev
+    evidence_msg.values = ev[:]
+    #evidence_msg.values.append(words)
+    evidence_msg.values.append(int(time.time()))
     evidence_msg.evidence_ids = ["Et{}".format(i) for i in reversed(range(len(ev)))]
+    evidence_msg.evidence_ids.append("Et")
     evidence_msg.user_id = 1
     rospy.loginfo("Publishing new talkativeness evidence.")
     #rospy.loginfo(evidence_msg)
     evidence_pub.publish(evidence_msg)
 
+
+def send_emotion_evidence(emotion):
+    """ Sends a new emotion evidence to be recorded. Emotions are in the range
+    [0,6], corresponding to:
+    0: anger
+    1: disgust
+    2: fear
+    3: happiness
+    4: neutral
+    5: sadness
+    6: surprise
+    """
+    # Send emotion evidence
+    evidence_msg = Evidence()
+    evidence_msg.values = [emotion]
+    evidence_msg.values.append(int(time.time()))
+    evidence_msg.evidence_ids = ["Ee", "Et"]
+    evidence_msg.user_id = 1
+    rospy.loginfo("Publishing new emotion evidence.")
+    evidence_pub.publish(evidence_msg)
 
 def send_volume_tuple(val):
     """ Sends a volume tuple of value val. """
@@ -102,12 +142,27 @@ def send_distance_tuple(val):
     tuple_pub.publish(tuple_msg)
 
 
+def emotion_worker():
+    print("Thread starting!")
+    r = rospy.Rate(1)
+    while not rospy.is_shutdown():
+        emotion = robot.get_user_emotion()
+        if emotion is not None:
+            emotion_code = emotion_dict[emotion]
+            send_emotion_evidence(emotion_code)
+        r.sleep()
+
+
 if __name__ == "__main__":
     # Initialize ROS node
     rospy.init_node('bum_ros_conductor')
 
     # Initialze the robot's functions
     robot.init_functions()
+
+    # Start emotion Thread
+    t = threading.Thread(target=emotion_worker)
+    t.start()
 
     # Gather ground truth
     if len(sys.argv) > 1 and sys.argv[1] == "gt":
@@ -136,13 +191,15 @@ if __name__ == "__main__":
     # Initialize correct volume
     robot.change_volume(volume_steps[current_volume])
 
+    # Introduce
+    robot.speak("Hello. We will now start a short interaction. Please answer my questions as you see fit.", lang="en-EN")
+
     # Loop over all questions
     for i in range(6):
         # Ask a question and receive answer
         rospy.loginfo("Asking a generic question...")
-        questions.pop(0)
-        #words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
-        #send_talkativeness_evidence(words, talk_time, ev_talk)
+        words, talk_time = robot.ask_question(questions, replace=False, speech_time=True, keyboard_mode=keyboard_mode)
+        send_talkativeness_evidence(words, talk_time, ev_talk)
 
         # Ask about volume if we haven't already
         if not asked_volume and (random.random() < 0.25 or i > 3):
