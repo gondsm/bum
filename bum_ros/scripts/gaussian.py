@@ -1,6 +1,24 @@
 """ The gaussian script
 Used for plotting example figures for illustrations.
 """
+
+# Copyright (C) 2017 University of Coimbra
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Original author and maintainer: Gonçalo S. Martins (gondsm@gmail.com)
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
@@ -94,6 +112,42 @@ def plot_matching_fig(filename=None, title=None):
     plt.close()
 
 
+def plot_population_example(filename=None, title=None):
+    """ This function plots a population of users, in the dictionary form
+    defined globally. If a filename is given, the plot is saved on that
+    file.
+    """
+    # Define a range of colors for the users
+    colors=["blue", "red", "orange"]
+
+    # Retrieve users
+    user_vectors = [[2,8,2], [8,2,8], [8,8,4], [8,8,8]]
+
+    # Initialize  and adjust figure
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.set_xlim([0,10])
+    ax.set_ylim([0,10])
+    ax.set_zlim([0,10])
+    ax.set_xlabel("$C_1$ [classes]")
+    ax.set_ylabel("$C_2$ [classes]")
+    ax.set_zlabel("$C_3$ [classes]")
+    ax.view_init(elev=15., azim=45)
+    if title is not None:
+        plt.title(title)
+
+    # Plot/Save
+    plt.hold(True)
+    for i, user in enumerate(user_vectors):
+        # Point
+        ax.plot([user[0]], [user[1]], [user[2]], 'o', label='User {}'.format(i))
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+    plt.close()
+
+
 def plot_gaussian():
 
     #Parameters to set
@@ -113,13 +167,13 @@ def plot_gaussian():
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.plot_surface(X, Y, Z,cmap="jet",linewidth=0)
-    ax.set_xlabel('X axis')
-    ax.set_ylabel('Y axis')
-    ax.set_zlabel('Z axis')
+    ax.set_xlabel('$C_1$')
+    ax.set_ylabel('$C_2$')
+    ax.set_zlabel('$Noise Level$')
     ax.view_init(elev=15., azim=45)
-    plt.show()
+    #plt.show()
 
-    #plt.savefig("gaussian.png")
+    plt.savefig("gaussian.pdf")
 
 def plot_evidence_signal():
     fig = plt.figure(figsize=[6,4])
@@ -149,6 +203,7 @@ if __name__=="__main__":
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['axes.ymargin'] = 0.1
     #plot_evidence_signal()
-    #plot_gaussian()
+    plot_gaussian()
 
-    plot_matching_fig("user_matched.pdf")
+    #plot_matching_fig("user_matched.pdf")
+    #plot_population_example("profiles.pdf")
