@@ -247,7 +247,7 @@ class population_simulator:
         for i in range(self._number_of_users):
             iterator = itertools.product(*a)
             for comb in iterator:
-                self._users[comb + (i,)] = [np.random.randint(1, elem) for elem in self._characteristics_structure]
+                self._users[comb + (i,)] = [np.random.randint(0, elem) for elem in self._characteristics_structure]
         
         # Re-initialize some evidence according to the profiles
         for key in self._profiles:
@@ -264,6 +264,10 @@ class population_simulator:
                 # Add noise
                 for j in range(len(charac)):
                     charac[j] += np.random.randint(-1, 2)
+                    if charac[j] < 0:
+                        charac[j] = 0
+                    if charac[j] >= self._characteristics_structure[j]:
+                        charac[j] = self._characteristics_structure[j]-1
                 #print(charac)
 
                 # Put into user population
